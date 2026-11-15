@@ -7,6 +7,7 @@ import { AuthShell } from "@/features/auth/auth-shell";
 import { useSession } from "@/features/auth/use-session";
 import authStyles from "@/features/auth/auth.module.css";
 import { ProjectCreateForm } from "./project-create-form";
+import { ProjectEditForm } from "./project-edit-form";
 import { useCurrentProject } from "./use-current-project";
 import styles from "./projects.module.css";
 
@@ -15,7 +16,8 @@ export function ProjectScreen() {
   const session = useSession();
   const actorId = session.state.status === "authenticated" && session.state.user.role === "student" ? session.state.user.id : undefined;
   const project = useCurrentProject(actorId);
-  const [notice, setNotice] = useState<{ owner?: string; projectId: string } | null>(null);
+  const [notice, setNotice] = useState<{ owner?: string; projectId: string; kind: "created" | "updated" } | null>(null);
+  const [editing, setEditing] = useState<{ owner?: string; projectId: string } | null>(null);
   useEffect(() => {
     if (session.state.status === "unauthenticated" || project.state.status === "unauthenticated") router.replace("/login?reason=session");
   }, [session.state.status, project.state.status, router]);
@@ -32,12 +34,22 @@ export function ProjectScreen() {
   if (project.state.status === "ready") {
     const data = project.state.project;
     return frame(<>{back}<div className={authStyles.heading}><span className={authStyles.sectionLabel}>โครงงานของทีม</span><h1>{data.name}</h1><p>ข้อมูลโครงงานของ {team.name}</p></div>
-      {notice?.owner === actorId && notice?.projectId === data.id && <p className={authStyles.notice} role="status">สร้างโครงงานสำเร็จแล้ว</p>}
+      {notice?.owner === actorId && notice?.projectId === data.id && <p className={authStyles.notice} role="status">{notice.kind === "created" ? "สร้างโครงงานสำเร็จแล้ว" : "แก้ไขโครงงานสำเร็จแล้ว"}</p>}
       <section className={styles.projectCard} aria-label="ข้อมูลโครงงาน"><dl>
         <div><dt>ชื่อโครงงาน</dt><dd>{data.name}</dd></div><div><dt>คำอธิบายโครงงาน</dt><dd className={styles.description}>{data.description ?? "ยังไม่มีคำอธิบายโครงงาน"}</dd></div>
         <div><dt>ทีมเจ้าของโครงงาน</dt><dd>{team.name}</dd></div>
       </dl></section>
+      {team.membership.role === "leader" && (editing?.owner === actorId && editing?.projectId === data.id
+        ? <ProjectEditForm key={`${actorId}:${data.id}`} project={data} onCancel={() => setEditing(null)}
+          onCheck={() => { setEditing(null); setNotice(null); project.refresh(); }} onUnauthenticated={() => router.replace("/login?reason=session")}
+          onUpdated={(updated) => {
+            if (updated.id !== data.id || updated.team_id !== team.id || updated.created_by !== data.created_by) { setEditing(null); session.retry(); project.refresh(); return; }
+            project.acceptCreated(team, updated); setEditing(null); setNotice({ owner: actorId, projectId: updated.id, kind: "updated" });
+          }} />
+        : <button type="button" className={styles.secondaryButton} onClick={() => { setNotice(null); setEditing({ owner: actorId, projectId: data.id }); }}>แก้ไขโครงงาน</button>)}
       <Link className={styles.invitationLink} href="/projects/advisor-invitations">คำเชิญอาจารย์ที่ปรึกษา →</Link>
+      <Link className={styles.invitationLink} href="/projects/committee">รายชื่อกรรมการและผลหัวข้อ →</Link>
+      <Link className={styles.invitationLink} href="/projects/evaluations">ผลประเมินโครงงาน →</Link>
     </>);
   }
   if (team.membership.role !== "leader") return frame(<>{back}<div className={authStyles.heading}><span className={authStyles.sectionLabel}>{team.name}</span><h1>รอหัวหน้าทีมสร้างโครงงาน</h1><p>เมื่อหัวหน้าสร้างโครงงานแล้ว สมาชิกในทีมจะอ่านข้อมูลได้จากหน้านี้</p></div><button className={styles.primaryButton} onClick={project.refresh}>ตรวจสอบโครงงานอีกครั้ง</button></>);
@@ -45,7 +57,7 @@ export function ProjectScreen() {
     <ProjectCreateForm key={`${actorId}:${team.id}`} onCheck={project.refresh} onUnauthenticated={() => router.replace("/login?reason=session")}
       onCreated={(created) => {
         if (created.team_id !== team.id || created.created_by !== actorId) { session.retry(); project.refresh(); return; }
-        project.acceptCreated(team, created); setNotice({ owner: actorId, projectId: created.id });
+        project.acceptCreated(team, created); setNotice({ owner: actorId, projectId: created.id, kind: "created" });
       }} />
   </>);
 }

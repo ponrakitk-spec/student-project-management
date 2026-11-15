@@ -20,6 +20,9 @@ export function useCurrentTeam(actorId?: string) {
       membership: { id: team.members[0].id, role: team.members[0].role },
     } } });
   }, [actorId]);
+  const acceptUpdated = useCallback((team: CurrentTeam) => {
+    setRecord({ owner: actorId, value: { status: "ready", team } });
+  }, [actorId]);
   useEffect(() => {
     if (!actorId) return;
     const controller = new AbortController();
@@ -35,5 +38,5 @@ export function useCurrentTeam(actorId?: string) {
     return () => controller.abort();
   }, [actorId, revision]);
   const state: TeamState = !actorId || record.owner !== actorId ? { status: "loading" } : record.value;
-  return { state, refresh, acceptCreated };
+  return { state, refresh, acceptCreated, acceptUpdated };
 }

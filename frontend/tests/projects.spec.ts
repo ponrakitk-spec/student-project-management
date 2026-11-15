@@ -71,7 +71,8 @@ test("team navigation, create and refresh use the real Project API", async ({ pa
   await expect(page.getByRole("heading", { name: "ระบบโครงงานตัวอย่าง", exact: true })).toBeVisible();
   await expect(page.getByText("รายละเอียดสำหรับทดสอบ", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "สร้างโครงงาน", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /ลบ|แก้ไข|เชิญ|ส่งไฟล์/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "แก้ไขโครงงาน", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /ลบ|เชิญ|ส่งไฟล์/ })).toHaveCount(0);
   expect(writes).toBe(1);
   expect(await page.evaluate(() => [JSON.stringify(Object.entries(localStorage)), JSON.stringify(Object.entries(sessionStorage))].join().includes("ระบบโครงงานตัวอย่าง"))).toBe(false);
   await page.screenshot({ path: info.outputPath("project-current-desktop.png"), fullPage: true });
@@ -94,6 +95,7 @@ test("no team and member waiting are distinct from leader creation", async ({ pa
   await login(page, member.email); await page.reload();
   await expect(page.getByRole("heading", { name: "โครงงานที่สมาชิกอ่านได้", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "สร้างโครงงาน", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "แก้ไขโครงงาน", exact: true })).toHaveCount(0);
 });
 
 test("client validates blank and Unicode length with optional description", async ({ page }, info) => {
@@ -203,4 +205,143 @@ test("mobile Project creation and card fit without horizontal overflow", async (
   await expect(page.getByRole("heading", { name: "โครงงานบนโทรศัพท์", exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: info.outputPath("project-current-mobile.png"), fullPage: true });
+});
+
+async function editableProject(page: Page) {
+  const { user, team } = await leader(page);
+  const response = await page.request.post(PROJECTS, { headers: await headers(page), data: { name: "โครงงานเดิม", description: "คำอธิบายเดิม" } });
+  expect(response.status()).toBe(201);
+  await page.goto("/projects");
+  await page.getByRole("button", { name: "แก้ไขโครงงาน", exact: true }).click();
+  return { user, team, project: (await response.json()).data };
+}
+function editRegion(page: Page) { return page.getByRole("region", { name: "แก้ไขโครงงาน", exact: true }); }
+
+test("leader edits only changed metadata, cancels without writes and refreshes real API data", async ({ page }, info) => {
+  const { project } = await editableProject(page);
+  let writes = 0; let body: unknown; let csrf = false;
+  page.on("request", (request) => {
+    if (request.url() === `${PROJECTS}/me` && request.method() === "PATCH") {
+      writes += 1; body = request.postDataJSON(); csrf = Boolean(request.headers()["x-csrf-token"]);
+    }
+  });
+  await page.getByLabel("ชื่อโครงงาน", { exact: true }).fill("ชื่อที่ยกเลิก");
+  await page.getByRole("button", { name: "ยกเลิก", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "โครงงานเดิม", exact: true })).toBeVisible();
+  expect(writes).toBe(0);
+  await page.getByRole("button", { name: "แก้ไขโครงงาน", exact: true }).click();
+  await page.getByLabel("ชื่อโครงงาน", { exact: true }).fill("  โครงงานที่แก้ไขแล้ว  ");
+  await page.screenshot({ path: info.outputPath("project-edit-desktop.png"), fullPage: true });
+  await page.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "โครงงานที่แก้ไขแล้ว", exact: true })).toBeVisible();
+  await expect(region(page).getByRole("status")).toContainText("แก้ไขโครงงานสำเร็จแล้ว");
+  expect(body).toEqual({ name: "โครงงานที่แก้ไขแล้ว" }); expect(csrf).toBe(true); expect(writes).toBe(1);
+  const result = (await (await page.request.get(`${PROJECTS}/me`)).json()).data;
+  expect(result).toEqual({ ...project, name: "โครงงานที่แก้ไขแล้ว" });
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "โครงงานที่แก้ไขแล้ว", exact: true })).toBeVisible();
+  await expect(page.getByText("คำอธิบายเดิม", { exact: true })).toBeVisible();
+});
+
+test("clearing description sends null and members cannot open editing", async ({ page }) => {
+  const member = await student(page);
+  const { user, project } = await editableProject(page);
+  let body: unknown;
+  page.on("request", (request) => { if (request.method() === "PATCH") body = request.postDataJSON(); });
+  await page.getByLabel("คำอธิบายโครงงาน", { exact: false }).fill("   ");
+  await page.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }).click();
+  await expect(page.getByText("ยังไม่มีคำอธิบายโครงงาน", { exact: true })).toBeVisible();
+  expect(body).toEqual({ description: null });
+  expect((await page.request.post(`${API}/api/v1/teams/me/members`, { headers: await headers(page), data: { email: member.email } })).status()).toBe(201);
+  await login(page, member.email); await page.reload();
+  await expect(page.getByRole("heading", { name: project.name, exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "แก้ไขโครงงาน", exact: true })).toHaveCount(0);
+  const denied = await page.request.patch(`${PROJECTS}/me`, { headers: await headers(page), data: { name: "Forbidden" } });
+  expect(denied.status()).toBe(403);
+  await login(page, user.email);
+  expect((await (await page.request.get(`${PROJECTS}/me`)).json()).data.name).toBe(project.name);
+});
+
+test("edit form validates blank and overlong names before PATCH", async ({ page }) => {
+  await editableProject(page);
+  let writes = 0; page.on("request", (request) => { if (request.method() === "PATCH") writes += 1; });
+  await page.getByLabel("ชื่อโครงงาน", { exact: true }).fill("  ");
+  await page.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }).click();
+  await expect(page.getByText("กรุณากรอกชื่อโครงงาน", { exact: true })).toBeVisible();
+  await page.getByLabel("ชื่อโครงงาน", { exact: true }).fill("x".repeat(256));
+  await page.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }).click();
+  await expect(page.getByText("ชื่อโครงงานต้องยาวไม่เกิน 255 ตัวอักษร", { exact: true })).toBeVisible();
+  expect(writes).toBe(0);
+});
+
+test("locked-phase response is shown without retry or changing the Project card", async ({ page }) => {
+  await editableProject(page);
+  let writes = 0;
+  await page.route(`${PROJECTS}/me`, async (route) => {
+    if (route.request().method() !== "PATCH") return route.fallback();
+    writes += 1;
+    await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: { code: "PROJECT_METADATA_LOCKED" } }) });
+  });
+  await page.getByLabel("ชื่อโครงงาน", { exact: true }).fill("Blocked edit");
+  await page.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }).click();
+  await expect(editRegion(page).getByRole("alert")).toContainText("ยังแก้ไขข้อมูลโครงงานในขั้นตอนนี้ไม่ได้");
+  expect(writes).toBe(1);
+  await page.getByRole("button", { name: "ยกเลิก", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "โครงงานเดิม", exact: true })).toBeVisible();
+  expect((await (await page.request.get(`${PROJECTS}/me`)).json()).data.name).toBe("โครงงานเดิม");
+});
+
+test("lost PATCH response requires GET reconciliation and never retries the write", async ({ page }) => {
+  await editableProject(page);
+  let writes = 0;
+  await page.route(`${PROJECTS}/me`, async (route) => {
+    if (route.request().method() !== "PATCH") return route.fallback();
+    writes += 1;
+    const applied = await route.fetch(); expect(applied.status()).toBe(200);
+    await route.abort("failed");
+  });
+  await page.getByLabel("ชื่อโครงงาน", { exact: true }).fill("Saved before disconnect");
+  await page.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }).click();
+  await expect(editRegion(page).getByRole("alert")).toContainText("ไม่สามารถยืนยันผลการทำรายการได้");
+  await expect(page.getByRole("button", { name: "บันทึกการแก้ไข", exact: true })).toBeDisabled();
+  expect(writes).toBe(1);
+  await page.getByRole("button", { name: "ตรวจสอบโครงงานอีกครั้ง", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Saved before disconnect", exact: true })).toBeVisible();
+  expect(writes).toBe(1);
+});
+
+test("editing handles real CSRF rejection and session loss", async ({ page }) => {
+  await editableProject(page);
+  const cookie = (await page.context().cookies(API)).find((item) => item.name === "spms_csrf")!;
+  await page.context().addCookies([{ ...cookie, value: "invalid" }]);
+  await page.getByLabel("ชื่อโครงงาน", { exact: true }).fill("Must not save");
+  await page.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }).click();
+  await expect(editRegion(page).getByRole("alert")).toContainText("ไม่สามารถยืนยันคำขอได้");
+  await expect(page.getByRole("link", { name: "เข้าสู่ระบบใหม่", exact: true })).toBeVisible();
+  expect((await (await page.request.get(`${PROJECTS}/me`)).json()).data.name).toBe("โครงงานเดิม");
+  await page.context().clearCookies();
+  await page.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }).click();
+  await expect(page).toHaveURL(/\/login\?reason=session$/);
+});
+
+test("mobile edit fits viewport and pending submission sends PATCH only once", async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await editableProject(page);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByLabel("ชื่อโครงงาน", { exact: true }).fill("แก้ไขผ่านโทรศัพท์");
+  let release!: () => void; let writes = 0;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  await page.route(`${PROJECTS}/me`, async (route) => {
+    if (route.request().method() !== "PATCH") return route.fallback();
+    writes += 1; await gate; await route.continue();
+  });
+  await page.getByRole("button", { name: "บันทึกการแก้ไข", exact: true }).click();
+  try {
+    await expect(page.getByRole("button", { name: "กำลังบันทึก…", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "ยกเลิก", exact: true })).toBeDisabled();
+    await editRegion(page).locator("form").dispatchEvent("submit");
+    await page.screenshot({ path: info.outputPath("project-edit-mobile.png"), fullPage: true });
+  } finally { release(); }
+  await expect(page.getByRole("heading", { name: "แก้ไขผ่านโทรศัพท์", exact: true })).toBeVisible();
+  expect(writes).toBe(1);
 });

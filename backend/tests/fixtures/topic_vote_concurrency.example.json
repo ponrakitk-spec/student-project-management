@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "database": "student_project_management_v1_test",
+  "namespace": "REPLACE_WITH_APPROVED_DEDICATED_FIXTURE",
+  "users": {
+    "leader_main": "REPLACE", "leader_revision": "REPLACE", "advisor": "REPLACE",
+    "b": "REPLACE", "c": "REPLACE", "d": "REPLACE", "spare": "REPLACE", "coordinator": "REPLACE"
+  },
+  "teams": {"main": "REPLACE", "revision": "REPLACE"},
+  "projects": {"main": "REPLACE", "revision": "REPLACE"},
+  "submissions": {"main": "REPLACE", "revision": "REPLACE"},
+  "assignments": {
+    "main": {"b": "REPLACE", "c": "REPLACE", "d": "REPLACE"},
+    "revision": {"b": "REPLACE", "c": "REPLACE", "d": "REPLACE"}
+  }
+}

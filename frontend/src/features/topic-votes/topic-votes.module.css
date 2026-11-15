@@ -1,0 +1,31 @@
+.backLink { display: inline-block; color: #60748e; font-size: 13px; margin-bottom: 26px; line-height: 1.8; }
+.list { display: flex; flex-direction: column; gap: 18px; list-style: none; padding: 0; margin: 20px 0; }
+.card { border: 1px solid #e0e7ef; border-radius: 12px; padding: 22px; overflow-wrap: anywhere; margin-top: 16px; }
+.card h2, .form h2, .confirmation h2 { color: #34445b; font-size: 18px; line-height: 1.8; }
+.card h3 { color: #34445b; font-size: 15px; line-height: 1.8; }
+.card p, .card li, .confirmation p { color: #526780; font-size: 14px; line-height: 1.9; }
+.card ul { padding-left: 20px; margin-top: 12px; }
+.hint { color: #77869b; font-size: 13px; line-height: 1.9; margin: 10px 0; }
+.notice { color: #245e57; border: 1px solid #d2e9df; background: #edf8f4; padding: 12px 14px; border-radius: 8px; font-size: 13px; line-height: 1.9; margin: 14px 0; }
+.comment { white-space: pre-wrap; overflow-wrap: anywhere; margin: 10px 0; }
+.comments { display: flex; flex-direction: column; gap: 12px; }
+.ownVote { border-top: 1px solid #e0e7ef; padding-top: 14px; margin-top: 14px; }
+.form { display: flex; flex-direction: column; gap: 12px; margin-top: 28px; }
+.form label { color: #34445b; font-size: 14px; line-height: 1.8; }
+.form select, .form textarea { width: 100%; min-width: 0; border: 1px solid #d8e0ea; border-radius: 8px; background: #fff; color: #23354f; padding: 12px 14px; font: inherit; font-size: 14px; line-height: 1.8; }
+.form select { min-height: 48px; }
+.form textarea { min-height: 120px; resize: vertical; }
+.primaryButton, .secondaryButton { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; padding: 11px 14px; font: inherit; font-size: 14px; line-height: 1.7; cursor: pointer; text-decoration: none; }
+.primaryButton { color: #fff; background: #163b70; border: 1px solid #163b70; }
+.secondaryButton { color: #255b95; background: #fff; border: 1px solid #d8e0ea; }
+.primaryButton:disabled, .secondaryButton:disabled, select:disabled, textarea:disabled { opacity: .6; cursor: not-allowed; }
+.textButton { color: #255b95; background: transparent; border: 0; font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+.card > .secondaryButton { margin-top: 14px; }
+.confirmation { border: 1px solid #d8e0ea; background: #f4f7fb; border-radius: 12px; padding: 18px; overflow-wrap: anywhere; }
+.actions { display: flex; gap: 12px; margin-top: 18px; }
+.actions .primaryButton { flex: 1; min-width: 0; }
+.actions .secondaryButton { flex: none; white-space: nowrap; }
+.errorBox { border: 1px solid #f0d7da; background: #fff2f3; color: #9d3440; border-radius: 8px; padding: 12px 14px; margin: 18px 0; font-size: 13px; line-height: 1.9; }
+.errorBox button { color: inherit; background: none; border: 0; padding: 4px 0; cursor: pointer; font: inherit; text-decoration: underline; }
+.primaryButton:focus-visible, .secondaryButton:focus-visible, .textButton:focus-visible, .backLink:focus-visible, .errorBox button:focus-visible, .form select:focus-visible, .form textarea:focus-visible { outline: 3px solid #7eb3ed; outline-offset: 3px; }
+@media (max-width: 520px) { .card { padding: 16px; } }

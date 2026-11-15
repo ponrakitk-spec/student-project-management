@@ -32,8 +32,12 @@ function isField(value: unknown): value is FieldError {
 }
 function isId(value: unknown): value is string { return typeof value === "string" && /^-?\d+$/.test(value); }
 
-async function request(path: string, init: RequestInit): Promise<unknown> {
+async function request(path: string, init: RequestInit, expectNoContent = false): Promise<unknown> {
   const response = await fetch(`${API_BASE}/api/v1/teams${path}`, { ...init, credentials: "include", cache: "no-store" });
+  if (response.ok && expectNoContent) {
+    if (response.status !== 204 || await response.text() !== "") throw new TeamApiError(502, "INVALID_RESPONSE");
+    return;
+  }
   const body = object(await response.json().catch(() => null));
   if (!response.ok) {
     const error = object(body?.error);
@@ -62,12 +66,38 @@ export async function currentTeam(signal?: AbortSignal): Promise<CurrentTeam | n
     if (error instanceof TeamApiError && error.status === 404 && error.code === "TEAM_NOT_FOUND") return null;
     throw error;
   }
+  return parseCurrentTeam(value);
+}
+
+function parseCurrentTeam(value: unknown): CurrentTeam {
   const data = object(value);
   const membership = object(data?.membership);
   if (!data || !isId(data.id) || typeof data.name !== "string" || !(typeof data.description === "string" || data.description === null)
     || !membership || !isId(membership.id) || !["leader", "member"].includes(String(membership.role))) throw new TeamApiError(502, "INVALID_RESPONSE");
   return data as CurrentTeam;
 }
+
+export async function updateTeam(changes: { name?: string; description?: string | null }, signal?: AbortSignal): Promise<CurrentTeam> {
+  const csrf = document.cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith("spms_csrf="))?.slice("spms_csrf=".length);
+  return parseCurrentTeam(await request("/me", { method: "PATCH", signal,
+    headers: { "Content-Type": "application/json", ...(csrf ? { "X-CSRF-Token": csrf } : {}) }, body: JSON.stringify(changes) }));
+}
+
+export async function transferLeader(teamMemberId: string, signal?: AbortSignal): Promise<CurrentTeam> {
+  const csrf = document.cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith("spms_csrf="))?.slice("spms_csrf=".length);
+  return parseCurrentTeam(await request("/me/leader", { method: "POST", signal,
+    headers: { "Content-Type": "application/json", ...(csrf ? { "X-CSRF-Token": csrf } : {}) },
+    body: JSON.stringify({ team_member_id: teamMemberId }) }));
+}
+
+async function membershipExit(path: string, signal?: AbortSignal): Promise<void> {
+  const csrf = document.cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith("spms_csrf="))?.slice("spms_csrf=".length);
+  await request(path, { method: "POST", signal,
+    headers: { "Content-Type": "application/json", ...(csrf ? { "X-CSRF-Token": csrf } : {}) }, body: "{}" }, true);
+}
+
+export function leaveTeam(signal?: AbortSignal) { return membershipExit("/me/leave", signal); }
+export function removeTeamMember(id: string, signal?: AbortSignal) { return membershipExit(`/me/members/${id}/remove`, signal); }
 
 function isMember(value: unknown): value is TeamMember {
   const item = object(value);
@@ -98,6 +128,14 @@ export function teamErrorMessage(error: unknown): string {
     AUTHENTICATION_REQUIRED: "กรุณาเข้าสู่ระบบอีกครั้ง",
     TEAM_CREATION_FORBIDDEN: "เฉพาะนักศึกษาเท่านั้นที่สร้างทีมได้",
     TEAM_ACCESS_FORBIDDEN: "หน้านี้สำหรับทีมของนักศึกษาเท่านั้น",
+    TEAM_UPDATE_FORBIDDEN: "เฉพาะหัวหน้าทีมปัจจุบันเท่านั้นที่แก้ไขทีมได้",
+    TEAM_METADATA_LOCKED: "ยังแก้ไขข้อมูลทีมในขั้นตอนนี้ไม่ได้ กรุณาตรวจสอบผลการส่งโครงงาน",
+    TEAM_LEADER_TRANSFER_FORBIDDEN: "เฉพาะหัวหน้าทีมปัจจุบันเท่านั้นที่โอนหัวหน้าได้",
+    TEAM_MEMBER_NOT_FOUND: "ไม่พบสมาชิกที่เลือกในทีมของคุณ กรุณาโหลดรายชื่อใหม่",
+    LEADER_TARGET_INVALID: "กรุณาเลือกสมาชิกคนอื่นในทีมเพื่อรับหน้าที่หัวหน้า",
+    TEAM_MEMBER_REMOVAL_FORBIDDEN: "เฉพาะหัวหน้าทีมปัจจุบันเท่านั้นที่ถอดสมาชิกได้",
+    TEAM_LEADERSHIP_TRANSFER_REQUIRED: "ต้องโอนตำแหน่งหัวหน้าก่อนออกจากทีมหรือถอดสมาชิกคนนี้",
+    MEMBER_EXIT_BLOCKED_BY_TASK: "ยังออกหรือถอดสมาชิกไม่ได้ เพราะมีงานที่กำลังทำซึ่งต้องมีผู้รับผิดชอบคนอื่นก่อน",
     TEAM_NOT_FOUND: "คุณยังไม่มีทีม กรุณาตรวจสอบทีมของคุณอีกครั้ง",
     TEAM_MEMBER_ADDITION_FORBIDDEN: "เฉพาะหัวหน้าทีมเท่านั้นที่เพิ่มสมาชิกได้",
     MEMBER_NOT_FOUND: "ไม่พบนักศึกษาที่เพิ่มได้ด้วยอีเมลนี้",

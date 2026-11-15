@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "database": "student_project_management_v1_test",
+  "namespace": "spms-ct-REPLACE_WITH_32_LOWERCASE_HEX_CHARACTERS",
+  "users": {
+    "leader_a": "<dedicated_student_id>",
+    "member_b": "<dedicated_student_id>",
+    "leader_c": "<dedicated_student_id>",
+    "free_student": "<dedicated_student_id>"
+  },
+  "teams": {
+    "main": "<dedicated_team_id>",
+    "empty": "<dedicated_team_id>"
+  },
+  "project_id": "<dedicated_project_id>"
+}

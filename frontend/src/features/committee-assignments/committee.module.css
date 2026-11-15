@@ -1,0 +1,28 @@
+.backLink { display: inline-block; color: #60748e; font-size: 13px; margin-bottom: 26px; line-height: 1.8; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 16px; margin: 18px 0; padding: 0; }
+.card { border: 1px solid #e0e7ef; border-radius: 12px; padding: 20px; overflow-wrap: anywhere; }
+.card h2, .card h3, .headingRow h2, .confirmation h2 { color: #34445b; font-size: 17px; line-height: 1.8; }
+.card p { font-size: 14px; line-height: 1.9; color: #60748e; margin-top: 6px; }
+.hint { color: #77869b; font-size: 13px; line-height: 1.9; margin: 8px 0; }
+.locked, .notice { color: #245e57; background: #edf8f4; border: 1px solid #d2e9df; padding: 12px 14px; border-radius: 8px; font-size: 13px; line-height: 1.9; margin: 12px 0; }
+.headingRow, .actions { display: flex; align-items: center; gap: 12px; }
+.headingRow { justify-content: space-between; margin-top: 24px; }
+.primaryButton, .secondaryButton { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 11px 14px; font: inherit; font-size: 13px; line-height: 1.7; border-radius: 8px; cursor: pointer; text-decoration: none; }
+.primaryButton { color: #fff; background: #163b70; border: 1px solid #163b70; }
+.secondaryButton { color: #255b95; background: #fff; border: 1px solid #d8e0ea; }
+.card > .secondaryButton { margin-top: 14px; }
+.primaryButton:disabled, .secondaryButton:disabled, select:disabled { opacity: .6; cursor: not-allowed; }
+.textButton { color: #255b95; background: none; border: 0; cursor: pointer; font: inherit; font-size: 13px; text-decoration: underline; }
+.form, .rowControls { display: flex; flex-direction: column; gap: 12px; margin-top: 22px; }
+.form { border-top: 1px solid #e0e7ef; padding-top: 24px; }
+.form label, .rowControls label { color: #34445b; font-size: 13px; line-height: 1.8; }
+.form select, .rowControls select { min-height: 48px; width: 100%; min-width: 0; padding: 10px 12px; color: #34445b; background: #fff; font: inherit; font-size: 13px; border: 1px solid #d8e0ea; border-radius: 8px; }
+.confirmation { background: #f4f7fb; border: 1px solid #d8e0ea; border-radius: 12px; padding: 20px; margin: 20px 0; overflow-wrap: anywhere; }
+.confirmation p { color: #34445b; line-height: 1.9; font-size: 14px; margin: 8px 0; }
+.confirmation .actions { margin-top: 18px; }
+.confirmation .primaryButton { flex: 1; min-width: 0; }
+.confirmation .secondaryButton { flex: none; white-space: nowrap; }
+.errorBox { margin: 18px 0; border-radius: 8px; border: 1px solid #f0d7da; color: #9d3440; background: #fff2f3; padding: 12px 14px; font-size: 13px; line-height: 1.9; }
+.errorBox button { color: inherit; cursor: pointer; font: inherit; border: 0; background: none; padding: 4px 0; text-decoration: underline; }
+.primaryButton:focus-visible, .secondaryButton:focus-visible, .textButton:focus-visible, .backLink:focus-visible, .errorBox button:focus-visible, select:focus-visible { outline: 3px solid #7eb3ed; outline-offset: 3px; }
+@media (max-width: 520px) { .card, .confirmation { padding: 16px; } .rowControls .actions { align-items: stretch; flex-direction: column; } }

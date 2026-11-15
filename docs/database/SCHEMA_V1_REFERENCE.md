@@ -2,6 +2,10 @@
 
 อัปเดต: 2026-11-07 · ขอบเขต: รวบรวมข้อกำหนดที่ยืนยันแล้วและแก้ความคลาดเคลื่อนของเอกสาร ไม่เพิ่ม Business Rules หรือเปลี่ยน Schema
 
+**บันทึก Evaluation 2026-11-15:** ผู้ใช้ยืนยัน API/UI และสิทธิ์เปิดเผยผลใน [Evaluation Contract](../api/EVALUATIONS_CONTRACT.md) แล้ว พัฒนาครบและมี [รายงานทดสอบ](../progress/EVALUATIONS_IMPLEMENTATION_REPORT.md) เงื่อนไขคะแนน/phase/immutable/first-score lock ใช้ SQL เดิม ส่วนรายละเอียด DTO รายบทบาทเป็นคำยืนยันเพิ่มเติม ไม่แก้ Data Dictionary/Schema/RBAC; ยังไม่ตรวจรับ Submission/Milestone API ของเพื่อนหรือระบบรวม
+
+**บันทึก implementation เพิ่มเติม 2026-11-15:** ต่อจากCoordinatorappointment ผู้ใช้ยืนยัน [TopicVote/roster/resultsContract](../api/TOPIC_VOTES_CONTRACT.md) และพัฒนาครบขอบเขตแล้ว กรรมการเห็นVoteตนเอง+decisionเมื่อครบ Team/acceptedAdvisorไม่เห็นVoteรายบุคคล Coordinatorเห็นตามG-12 [Backend349/Browser90/lint/TypeScript/buildผ่าน](../progress/TOPIC_VOTES_IMPLEMENTATION_REPORT.md) พร้อมROLLBACKและbaseline52functions/ACLตรงsource ไม่เปลี่ยนV1/สิทธิ์SQL ยังไม่EvaluationAPI/ไฟล์Submissionเพื่อน/TX02-UATครบ; รายการสถานะเก่าด้านล่างเป็นประวัติอ่านควบคู่Backlogล่าสุด
+
 ## ลำดับการอ้างอิง
 
 1. ข้อกำหนดที่ผู้ใช้ยืนยันล่าสุด รวม R-01=A และข้อจำกัดการใช้งานฐานข้อมูล

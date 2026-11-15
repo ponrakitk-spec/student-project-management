@@ -1,9 +1,10 @@
 """Session-authenticated create-Team API; request cannot choose the actor."""
 
-from typing import Literal
+from typing import Annotated, Literal
+import re
 
-from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from fastapi import APIRouter, Depends, Request, Response
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from backend.auth_api import (
     ASCII_SPACE, CSRF_COOKIE, CSRF_HEADER, SESSION_COOKIE, AuthError, LoginInput,
@@ -42,6 +43,49 @@ class TeamCreateInput(BaseModel):
         if value is None:
             return None
         return require_database_text(value).strip(ASCII_SPACE) or None
+
+
+class TeamUpdateInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, hide_input_in_errors=True)
+    name: str | None = None
+    description: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def name_format(cls, value):
+        if value is None:
+            raise ValueError("TEAM_NAME_REQUIRED")
+        return TeamCreateInput.name_format(value)
+
+    @field_validator("description")
+    @classmethod
+    def description_format(cls, value):
+        return TeamCreateInput.description_format(value)
+
+    @model_validator(mode="after")
+    def at_least_one_field(self):
+        if not self.model_fields_set:
+            raise ValueError("TEAM_UPDATE_REQUIRED")
+        return self
+
+
+class LeaderTransferInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, hide_input_in_errors=True)
+    team_member_id: str
+
+    @field_validator("team_member_id")
+    @classmethod
+    def member_id_format(cls, value):
+        if not re.fullmatch(r"[0-9]{1,19}", value) or not 0 < int(value) <= 9223372036854775807:
+            raise ValueError("INVALID_ID")
+        return str(int(value))
+
+
+MembershipId = Annotated[str, AfterValidator(LeaderTransferInput.member_id_format)]
+
+
+class MembershipExitInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, hide_input_in_errors=True)
 
 
 class TeamLeader(BaseModel):
@@ -108,6 +152,27 @@ MEMBER_ERRORS = {
     "MEMBER_NOT_FOUND": (404, "ไม่พบนักศึกษาที่เพิ่มได้ด้วยอีเมลนี้"),
     "MEMBER_UNAVAILABLE": (409, "ไม่สามารถเพิ่มนักศึกษาคนนี้ได้ เนื่องจากมีทีมอยู่แล้ว"),
     "MEMBER_ADDITION_LOCKED": (409, "ช่วงสถานะปัจจุบันยังไม่อนุญาตให้เพิ่มสมาชิก"),
+}
+
+UPDATE_ERRORS = {
+    "TEAM_NOT_FOUND": MEMBER_ERRORS["TEAM_NOT_FOUND"],
+    "TEAM_UPDATE_FORBIDDEN": (403, "เฉพาะหัวหน้าทีมปัจจุบันเท่านั้นที่แก้ไขทีมได้"),
+    "TEAM_METADATA_LOCKED": (409, "ยังแก้ไขข้อมูลทีมในขั้นตอนนี้ไม่ได้ กรุณาตรวจสอบผลการส่งโครงงาน"),
+}
+
+TRANSFER_ERRORS = {
+    "TEAM_NOT_FOUND": MEMBER_ERRORS["TEAM_NOT_FOUND"],
+    "TEAM_LEADER_TRANSFER_FORBIDDEN": (403, "เฉพาะหัวหน้าทีมปัจจุบันเท่านั้นที่โอนหัวหน้าได้"),
+    "TEAM_MEMBER_NOT_FOUND": (404, "ไม่พบสมาชิกที่เลือกในทีมของคุณ กรุณาโหลดรายชื่อใหม่"),
+    "LEADER_TARGET_INVALID": (409, "กรุณาเลือกสมาชิกคนอื่นในทีมเพื่อรับหน้าที่หัวหน้า"),
+}
+
+EXIT_ERRORS = {
+    "TEAM_NOT_FOUND": MEMBER_ERRORS["TEAM_NOT_FOUND"],
+    "TEAM_MEMBER_NOT_FOUND": TRANSFER_ERRORS["TEAM_MEMBER_NOT_FOUND"],
+    "TEAM_MEMBER_REMOVAL_FORBIDDEN": (403, "เฉพาะหัวหน้าทีมปัจจุบันเท่านั้นที่ถอดสมาชิกได้"),
+    "TEAM_LEADERSHIP_TRANSFER_REQUIRED": (409, "ต้องโอนตำแหน่งหัวหน้าก่อนออกจากทีมหรือถอดสมาชิกคนนี้"),
+    "MEMBER_EXIT_BLOCKED_BY_TASK": (409, "ยังออกหรือถอดสมาชิกไม่ได้ เพราะมีงานที่กำลังทำซึ่งต้องมีผู้รับผิดชอบคนอื่นก่อน"),
 }
 
 
@@ -179,6 +244,60 @@ def current_team(request: Request, uow=Depends(get_team_uow)):
     return result
 
 
+@router.patch("/me", response_model=CurrentTeamResponse)
+def update_team(payload: TeamUpdateInput, request: Request, uow=Depends(get_team_uow)):
+    if session_digest(request.cookies.get(SESSION_COOKIE)) is None:
+        raise unauthenticated()
+    try:
+        with uow() as store:
+            result = CurrentTeamResponse(data=store.update(
+                member_actor(request, store, writing=True), payload.model_dump(exclude_unset=True)))
+    except TeamMemberError as exc:
+        status, message = UPDATE_ERRORS[exc.code]
+        raise AuthError(status, exc.code, message) from None
+    return result
+
+
+@router.post("/me/leader", response_model=CurrentTeamResponse)
+def transfer_leader(payload: LeaderTransferInput, request: Request, uow=Depends(get_team_uow)):
+    if session_digest(request.cookies.get(SESSION_COOKIE)) is None:
+        raise unauthenticated()
+    try:
+        with uow() as store:
+            result = CurrentTeamResponse(data=store.transfer_leader(
+                member_actor(request, store, writing=True), payload.team_member_id))
+    except TeamMemberError as exc:
+        status, message = TRANSFER_ERRORS[exc.code]
+        raise AuthError(status, exc.code, message) from None
+    return result
+
+
+@router.post("/me/leave", status_code=204, response_class=Response)
+def leave_team(payload: MembershipExitInput, request: Request, uow=Depends(get_team_uow)):
+    if session_digest(request.cookies.get(SESSION_COOKIE)) is None:
+        raise unauthenticated()
+    try:
+        with uow() as store:
+            store.exit_member(member_actor(request, store, writing=True))
+    except TeamMemberError as exc:
+        status, message = EXIT_ERRORS[exc.code]
+        raise AuthError(status, exc.code, message) from None
+    return Response(status_code=204)
+
+
+@router.post("/me/members/{team_member_id}/remove", status_code=204, response_class=Response)
+def remove_member(team_member_id: MembershipId, payload: MembershipExitInput, request: Request, uow=Depends(get_team_uow)):
+    if session_digest(request.cookies.get(SESSION_COOKIE)) is None:
+        raise unauthenticated()
+    try:
+        with uow() as store:
+            store.exit_member(member_actor(request, store, writing=True), team_member_id)
+    except TeamMemberError as exc:
+        status, message = EXIT_ERRORS[exc.code]
+        raise AuthError(status, exc.code, message) from None
+    return Response(status_code=204)
+
+
 @router.post("", status_code=201, response_model=TeamCreateResponse)
 def create_team(payload: TeamCreateInput, request: Request, uow=Depends(get_team_uow)):
     token = request.cookies.get(SESSION_COOKIE)
@@ -206,10 +325,10 @@ async def team_validation_error_handler(request, exc):
     fields = []
     for error in exc.errors():
         location = error.get("loc", ())
-        field = location[1] if len(location) > 1 and location[1] in ("name", "description", "email") else "body"
+        field = location[1] if len(location) > 1 and location[1] in ("name", "description", "email", "team_member_id") else "body"
         original = error.get("ctx", {}).get("error")
         code = str(original) if original is not None else ""
-        if code not in ("TEAM_NAME_REQUIRED", "TEAM_NAME_TOO_LONG", "TEAM_TEXT_INVALID", "EMAIL_FORMAT_INVALID", "EMAIL_TOO_LONG"):
+        if code not in ("TEAM_NAME_REQUIRED", "TEAM_NAME_TOO_LONG", "TEAM_TEXT_INVALID", "TEAM_UPDATE_REQUIRED", "INVALID_ID", "EMAIL_FORMAT_INVALID", "EMAIL_TOO_LONG"):
             code = {"missing": "REQUIRED", "extra_forbidden": "UNEXPECTED_FIELD",
                     "json_invalid": "INVALID_JSON"}.get(error["type"], "INVALID_TYPE")
         item = {"field": field, "code": code}

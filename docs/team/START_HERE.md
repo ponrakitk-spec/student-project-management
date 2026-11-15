@@ -1,5 +1,23 @@
 # จุดเริ่มต้นสำหรับทีม — Student Project Management System
 
+**ชุดส่งต่อ 2026-11-15:** ดู [สรุปส่วนเพิ่ม/ผลทดสอบ/ข้อจำกัดและสถานะก่อนเผยแพร่](RELEASE_PREPARATION_2026-11-15.md) สำหรับ `feature/project-continuation`; ตรวจ commit/remote ที่ได้รับก่อนเริ่มงาน รายงาน handoff เดิมเป็นหลักฐานของฐาน `679913a`
+
+**คู่มือ/UAT 2026-11-15:** มี [คู่มือผู้ใช้](../user/USER_GUIDE.md), [Demo](../user/DEMO_SCRIPT.md) และ [แผนManual UAT20กรณี/เปิด8001แบบROLLBACK](../uat/MANUAL_UAT.md) แล้ว Startup/API/teardown probe9คำขอผ่านและคืนbaseline แต่ **Manual UATโดยทีมยังNot Run** เอกสารอิงlocalworkingtreeที่ยังไม่Commit/Push ต้องได้sourceชุดเดียวกันก่อนทำตาม ไม่ถือว่าclonecommitเก่าจะมีWorkspace/Evaluationครบ
+
+**ล่าสุด Evaluation 2026-11-15:** พัฒนา [API/UI ตาม Contract ที่ยืนยัน](../api/EVALUATIONS_CONTRACT.md) แล้ว กรรมการบันทึกคะแนนครั้งเดียวและเห็นของตน; รวม/เฉลี่ยเปิดเมื่อครบ และ Coordinator เห็นรายบุคคลหลังครบเท่านั้น ดู [ผลตรวจและข้อจำกัด](../progress/EVALUATIONS_IMPLEMENTATION_REPORT.md) เงื่อนไขหัวข้อผ่าน/มี completed Milestone มาจาก SQL เดิม รอบนี้ไม่แก้ Submission/Milestone/Supabase ของเพื่อนหรือ Schema/RBAC
+
+**รอบ Topic votes 2026-11-15:** [Vote/รายชื่อ/ผลตามสิทธิ์ครบContract](../api/TOPIC_VOTES_CONTRACT.md) ต่อจากCoordinatorappointmentแล้ว [Backend349/Browser90/lint/TypeScript/buildผ่าน](../progress/TOPIC_VOTES_IMPLEMENTATION_REPORT.md) ทุกfixtureROLLBACK กรรมการเห็นVoteตนเองและdecisionเมื่อครบ Team/acceptedAdvisorเห็นrosterและผล/commentsตามช่วง Coordinatorเห็นVoteรายบุคคล ผู้ใช้ [เตรียมcoordinatorผ่านCLIเอง](../database/COORDINATOR_ACCOUNT_PROVISIONING.md) Projectต้องมีapprovedSubmissionจริงตามG-12 ยังไม่รวมไฟล์Submissionของเพื่อนหรือCommit/Push
+
+**ตรวจความคืบหน้า 2026-11-14:** อ่าน [รายงานล่าสุด](../progress/2026-11-14_CONTINUATION_REVIEW.md) และ [รายการรับช่วงจาก database-schema2](SCHEMA2_INTEGRATION_HANDOFF.md) ก่อนรวมงานเพื่อน ส่วนตารางด้านล่างอธิบายฐาน `679913a` ที่ส่งทีมเมื่อ 2026-11-07; Submission Backend ใหม่ยังอยู่เฉพาะ branch เพื่อน และยังไม่รวมเข้าฐานนี้
+
+เจ้าของยืนยันว่าเพื่อนรับผิดชอบ **Submission + Milestone** และเตรียม **Supabase สำหรับอนาคต** จึงไม่ทำสอง feature ซ้ำหรือย้าย runtime DB ตอนนี้ เจ้าของอนุมัติ [แก้ชื่อ/คำอธิบาย Project](../api/PROJECT_UPDATE_CONTRACT.md) แล้ว พัฒนาและทดสอบครบขอบเขตตาม [รายงาน2026-11-14](../progress/PROJECT_UPDATE_IMPLEMENTATION_REPORT.md) ใน local feature/project-continuation ยังไม่ Commit/Push
+
+**รอบต่อมา Team update:** หัวหน้าแก้ชื่อ/คำอธิบายทีมได้ตาม [Contract](../api/TEAM_UPDATE_CONTRACT.md) และกฎphaseเดิม ผ่านBackend214/Browser56/directapp/lint/TypeScript/buildพร้อมROLLBACK ดู [รายงานล่าสุด](../progress/TEAM_UPDATE_IMPLEMENTATION_REPORT.md) ยังไม่เพิ่มออก/ถอดสมาชิก/โอนหัวหน้า API/UI และยังไม่รวมงานเพื่อน
+
+**รอบโอนหัวหน้าถัดมา:** ยืนยันและimplemented [Leader transfer](../api/TEAM_LEADER_TRANSFER_CONTRACT.md) แล้ว ผ่านBackend227/Browser63/directapp/lint/TypeScript/buildพร้อมROLLBACK ดู [ผลล่าสุด](../progress/TEAM_LEADER_TRANSFER_IMPLEMENTATION_REPORT.md) ออก/ถอดสมาชิกยังไม่พัฒนา คงbranchlocalเดิมและไม่mergeงานเพื่อน/Commit/Push
+
+**รอบออก/ถอดสมาชิกถัดมา:** [Exit Contract](../api/TEAM_MEMBERSHIP_EXIT_CONTRACT.md) implemented/verifiedแล้ว Backend242/Exit15/directapp และหลังพอร์ตmanualว่าง build/Browser73รวมExit10/lint/TypeScriptผ่านพร้อมROLLBACK ดู [ผลตรวจรับล่าสุด](../progress/TEAM_MEMBERSHIP_EXIT_IMPLEMENTATION_REPORT.md) ยังไม่รวมงานเพื่อนหรือCommit/Push
+
 อัปเดต2026-11-07 · ทีมใช้ **Windows/PowerShell และ PostgreSQLแยกเครื่อง** ตามที่เจ้าของยืนยัน ฐานพัฒนาปัจจุบันfeature/database-schema; ต้องเริ่มจากcommitที่มีเอกสารนี้ ไม่ใช่remotecommit9d07c52เดิมที่ยังไม่มีงานรอบTeam/Project/Invitations
 
 ## อ่านตามลำดับ

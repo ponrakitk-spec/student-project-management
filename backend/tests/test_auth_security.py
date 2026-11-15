@@ -88,10 +88,27 @@ class AuthBoundaryTests(unittest.TestCase):
             app = create_app()
             self.assertEqual(set(app.openapi()["paths"]), {
                 "/", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/logout", "/api/v1/auth/me", "/api/v1/teams", "/api/v1/teams/me", "/api/v1/teams/me/members",
-                "/api/v1/projects", "/api/v1/projects/me",
+                "/api/v1/projects", "/api/v1/projects/me", "/api/v1/teams/me/leader",
+                "/api/v1/teams/me/leave", "/api/v1/teams/me/members/{team_member_id}/remove",
                 "/api/v1/projects/me/advisor-candidates", "/api/v1/projects/me/advisor-invitations", "/api/v1/advisor-invitations/me",
                 "/api/v1/advisor-invitations/{invitation_id}/cancel", "/api/v1/advisor-invitations/{invitation_id}/respond",
+                "/api/v1/coordinator/projects", "/api/v1/coordinator/projects/{project_id}/committee",
+                "/api/v1/coordinator/projects/{project_id}/committee-candidates",
+                "/api/v1/coordinator/projects/{project_id}/committee/{assignment_id}",
+                "/api/v1/coordinator/projects/{project_id}/committee/{assignment_id}/remove",
+                "/api/v1/committee/projects", "/api/v1/committee/projects/{project_id}/topic-votes",
+                "/api/v1/projects/me/committee", "/api/v1/advisor/projects",
+                "/api/v1/advisor/projects/{project_id}/committee",
+                "/api/v1/coordinator/projects/{project_id}/topic-votes",
+                "/api/v1/committee/projects/{project_id}/evaluations", "/api/v1/projects/me/evaluations",
+                "/api/v1/advisor/projects/{project_id}/evaluations", "/api/v1/coordinator/projects/{project_id}/evaluations",
             })
+            self.assertEqual(set(app.openapi()["paths"]["/api/v1/projects/me"]), {"get", "patch"})
+            self.assertEqual(set(app.openapi()["paths"]["/api/v1/teams/me"]), {"get", "patch"})
+            self.assertEqual(set(app.openapi()["paths"]["/api/v1/teams/me/leader"]), {"post"})
+            for path in ("/api/v1/teams/me/leave", "/api/v1/teams/me/members/{team_member_id}/remove"):
+                self.assertEqual(set(app.openapi()["paths"][path]), {"post"})
+            self.assertEqual(set(app.openapi()["paths"]["/api/v1/coordinator/projects/{project_id}/committee"]), {"get", "post"})
 
     def test_user_ids_preserve_bigint_precision_as_strings(self):
         row = (9223372036854775807, "Student", "student@example.test", "student")

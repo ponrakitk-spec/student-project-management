@@ -298,17 +298,214 @@ class ProjectAPIIntegrationTests(unittest.TestCase):
         self.assertEqual(self.conn.execute("SELECT team_id,created_by FROM public.projects WHERE id=%s",(project["id"],)).fetchone(),(int(team["id"]),int(leader["id"])))
         self.projects(1)
 
-    def test_no_delete_or_update_http_operations_exist(self):
+    def test_only_approved_project_operations_exist_and_delete_stays_forbidden(self):
         self.team()
         self.post()
         paths=self.app.openapi()["paths"]
         self.assertEqual(set(paths[URL]),{"post"})
-        self.assertEqual(set(paths[URL+"/me"]),{"get"})
-        for method in ("delete","patch","put"):
+        self.assertEqual(set(paths[URL+"/me"]),{"get","patch"})
+        for method in ("delete","put"):
             response=getattr(self.client,method)(URL+"/me",headers=base.ORIGIN)
             self.assertEqual(response.status_code,405)
             self.assertEqual(response.headers["cache-control"],"no-store")
         self.projects(1)
+
+    def patch_metadata(self, payload, *, headers=None):
+        return self.client.patch(URL+"/me", json=payload,
+            headers={**base.ORIGIN, CSRF_HEADER:self.client.cookies.get(CSRF_COOKIE) or "", **(headers or {})})
+
+    def fixture_actor(self, user):
+        self.conn.execute("SELECT set_config('app.actor_user_id',%s,true)", (user["id"],))
+
+    def fixture_submission(self, leader, project, review=None):
+        # DB-only phase setup; these bytes deliberately are not an upload API
+        # fixture. All writes share the test's outer ROLLBACK and app role.
+        advisor = self.signed_in("advisor")
+        self.fixture_actor(leader)
+        invitation = self.conn.execute("""INSERT INTO public.advisor_invitations(project_id,advisor_id,sent_by)
+            VALUES (%s,%s,%s) RETURNING id""", (project["id"],advisor["id"],leader["id"])).fetchone()[0]
+        self.fixture_actor(advisor)
+        self.conn.execute("SELECT public.v1_resolve_invitation(%s,'accepted')", (invitation,))
+        self.fixture_actor(leader)
+        self.conn.execute("SET CONSTRAINTS public.c_submission_requires_file DEFERRED")
+        submission = self.conn.execute("""INSERT INTO public.project_submissions(project_id,submitted_by)
+            VALUES (%s,%s) RETURNING id""", (project["id"],leader["id"])).fetchone()[0]
+        self.conn.execute("""INSERT INTO public.project_submission_files(submission_id,file_data,original_filename,mime_type)
+            VALUES (%s,%s,'database-fixture.pdf','application/pdf')""", (submission,b"DB-only phase fixture"))
+        self.conn.execute("SET CONSTRAINTS ALL IMMEDIATE")
+        self.conn.execute("SET CONSTRAINTS ALL DEFERRED")
+        if review:
+            self.fixture_actor(advisor)
+            self.conn.execute("SELECT public.v1_review_submission(%s,%s,%s)",
+                (submission,review,"Please revise" if review=="revision_requested" else None))
+        self.login_as(leader)
+        return submission
+
+    def test_patch_partial_fields_normalization_and_identity_preservation(self):
+        leader,team=self.team()
+        original=self.post({"name":"Original", "description":"Keep this"}).json()["data"]
+        for payload, expected in (({"name":" \tEdited\n"},("Edited","Keep this")),
+                                  ({"description":" \tNew detail\n"},("Edited","New detail")),
+                                  ({"description":None},("Edited",None)),
+                                  ({"name":"Edited","description":"  "},("Edited",None))):
+            response=self.patch_metadata(payload)
+            self.assertEqual(response.status_code,200,response.text)
+            data=response.json()["data"]
+            self.assertEqual((data["name"],data["description"]),expected)
+            for key in ("id","team_id","created_by"):
+                self.assertEqual(data[key],original[key])
+            self.assertEqual(response.headers["cache-control"],"no-store")
+            self.assertFalse(response.headers.get_list("set-cookie"))
+            self.assertEqual(self.client.get(URL+"/me").json()["data"],data)
+        self.projects(1)
+
+    def test_patch_validation_empty_null_name_unknown_and_text_boundaries(self):
+        self.team(); original=self.post().json()["data"]
+        for payload in ({},{"name":None},{"name":False},{"name":" \t"},{"name":"x"*256},
+                        {"description":[]},{"name":"bad\x00text"},
+                        *({field:"DoNotEchoProjectFixture"} for field in ("id","team_id","created_by","actor_user_id","status","password"))):
+            response=self.patch_metadata(payload)
+            self.assert_error(response,422,"VALIDATION_ERROR")
+            self.assertNotIn("DoNotEchoProjectFixture",response.text)
+            self.assertEqual(self.client.get(URL+"/me").json()["data"],original)
+        from backend.project_api import ProjectUpdateInput
+        for field in ("name","description"):
+            with self.assertRaises(ValidationError): ProjectUpdateInput(**{field:"bad\ud800text"})
+        response=self.patch_metadata({"name":"📚"*255,"description":"x"*4096})
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.json()["data"]["name"],"📚"*255)
+        self.assertEqual(response.json()["data"]["description"],"x"*4096)
+
+    def test_patch_no_team_no_project_and_staff_boundaries(self):
+        for role in ("student","advisor","coordinator"):
+            self.signed_in(role)
+            status,code=(404,"TEAM_NOT_FOUND") if role=="student" else (403,"PROJECT_ACCESS_FORBIDDEN")
+            self.assert_error(self.patch_metadata({"name":"Edit"}),status,code)
+        self.team()
+        self.assert_error(self.patch_metadata({"name":"Edit"}),404,"PROJECT_NOT_FOUND")
+
+    def test_patch_member_and_cross_team_cannot_modify_or_select_another_project(self):
+        leader,team=self.team(); private=self.post().json()["data"]
+        member=self.member(leader,team)
+        self.assert_error(self.patch_metadata({"name":"Edit"}),403,"PROJECT_UPDATE_FORBIDDEN")
+        self.assert_error(self.patch_metadata({"name":private["name"]}),403,"PROJECT_UPDATE_FORBIDDEN")
+        self.team(); own=self.post({"name":"Own"}).json()["data"]
+        response=self.client.patch(URL+"/me?project_id="+private["id"]+"&user_id="+leader["id"],
+            headers={**base.ORIGIN,CSRF_HEADER:self.client.cookies.get(CSRF_COOKIE),"X-User-ID":leader["id"]},
+            json={"name":"Own updated"})
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.json()["data"]["id"],own["id"])
+        self.login_as(leader)
+        self.assertEqual(self.client.get(URL+"/me").json()["data"],private)
+
+    def test_patch_authority_rechecked_and_new_leader_may_edit_without_changing_creator(self):
+        leader,team=self.team(); project=self.post().json()["data"]
+        original=ProjectRepository.own_team
+        for mode in ("member","missing"):
+            calls=0
+            def changed(store,actor):
+                nonlocal calls
+                row=original(store,actor); calls+=1
+                if calls==2: return (row[0],"member") if mode=="member" else None
+                return row
+            with patch.object(ProjectRepository,"own_team",changed):
+                self.assert_error(self.patch_metadata({"name":"Edit"}),
+                    403 if mode=="member" else 404,"PROJECT_UPDATE_FORBIDDEN" if mode=="member" else "TEAM_NOT_FOUND")
+        member=self.member(leader,team)
+        self.fixture_actor(leader)
+        # Transfer changes two roles. Defer cardinality until both rows have
+        # changed; member() forced it IMMEDIATE to validate its own insertion.
+        self.conn.execute("SET CONSTRAINTS public.c_team_member_cardinality DEFERRED")
+        self.conn.execute("SELECT public.v1_transfer_team_leader(%s,%s)",(team["id"],member["id"]))
+        self.conn.execute("SET CONSTRAINTS public.c_team_member_cardinality IMMEDIATE")
+        self.login_as(leader)
+        self.assert_error(self.patch_metadata({"name":"Old leader"}),403,"PROJECT_UPDATE_FORBIDDEN")
+        self.login_as(member)
+        response=self.patch_metadata({"name":"New leader edit"})
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(response.json()["data"]["created_by"],project["created_by"])
+
+    def test_patch_pending_and_approved_locked_revision_allowed_and_snapshot_immutable(self):
+        for review in (None,"approved","revision_requested"):
+            with self.subTest(review=review),self.conn.transaction(force_rollback=True):
+                leader,_=self.team(); project=self.post({"name":"Snapshot", "description":"Old detail"}).json()["data"]
+                submission=self.fixture_submission(leader,project,review)
+                original=self.conn.execute("SELECT snapshot_name,snapshot_description FROM public.project_submissions WHERE id=%s",(submission,)).fetchone()
+                for payload in ({"name":"Changed"},{"name":"Snapshot"}):
+                    response=self.patch_metadata(payload)
+                    if review=="revision_requested": self.assertEqual(response.status_code,200,response.text)
+                    else: self.assert_error(response,409,"PROJECT_METADATA_LOCKED")
+                self.assertEqual(self.conn.execute("SELECT snapshot_name,snapshot_description FROM public.project_submissions WHERE id=%s",(submission,)).fetchone(),original)
+
+    def test_patch_committee_requires_completed_revision_decision_and_final_approval_locks(self):
+        for votes in (("approved","approved","approved"),("revision_requested","revision_requested","approved")):
+            with self.subTest(votes=votes),self.conn.transaction(force_rollback=True):
+                leader,_=self.team(); project=self.post().json()["data"]
+                submission=self.fixture_submission(leader,project,"approved")
+                committee=[self.signed_in("advisor") for _ in range(3)]
+                coordinator=self.signed_in("coordinator"); self.fixture_actor(coordinator)
+                assignments=[self.conn.execute("SELECT public.v1_appoint_committee(%s,%s)",(project["id"],u["id"])).fetchone()[0] for u in committee]
+                for index,(user,assignment,vote) in enumerate(zip(committee,assignments,votes)):
+                    self.fixture_actor(user)
+                    self.conn.execute("SELECT public.v1_cast_vote(%s,%s,%s,%s)",
+                        (submission,assignment,vote,"Please revise" if vote=="revision_requested" else None))
+                    self.login_as(leader)
+                    response=self.patch_metadata({"description":"Updated after committee"})
+                    if index==2 and votes[0]=="revision_requested": self.assertEqual(response.status_code,200,response.text)
+                    else: self.assert_error(response,409,"PROJECT_METADATA_LOCKED")
+
+    def test_patch_session_expiry_revocation_csrf_and_origin(self):
+        self.team(); original=self.post().json()["data"]
+        for origin in ("","null","http://untrusted.example.test"):
+            self.assert_error(self.patch_metadata({"name":"Edit"},headers={"Origin":origin}),403,"ORIGIN_NOT_ALLOWED")
+        self.assert_error(self.patch_metadata({"name":"Edit"},headers={CSRF_HEADER:"wrong"}),403,"CSRF_INVALID")
+        token=self.client.cookies.get(SESSION_COOKIE)
+        for mode in ("expired","revoked"):
+            with self.conn.transaction(force_rollback=True):
+                with self.conn.cursor() as cur:
+                    switch(cur,"project_owner")
+                    if mode=="expired": cur.execute("UPDATE auth.sessions SET created_at=clock_timestamp()-interval '2 hours',expires_at=clock_timestamp()-interval '1 hour' WHERE token_hash=%s",(session_digest(token),))
+                    else: cur.execute("DELETE FROM auth.sessions WHERE token_hash=%s",(session_digest(token),))
+                    switch(cur,"project_app")
+                self.assert_error(self.patch_metadata({"name":"Edit"}),401,"AUTHENTICATION_REQUIRED")
+        self.assertEqual(self.client.get(URL+"/me").json()["data"],original)
+        self.client.cookies.clear()
+        self.assert_error(self.patch_metadata({"name":"Edit"}),401,"AUTHENTICATION_REQUIRED")
+
+    def test_patch_cors_preflight_allows_only_trusted_origin_and_approved_methods(self):
+        response=self.client.options(URL+"/me",headers={**base.ORIGIN,"Access-Control-Request-Method":"PATCH","Access-Control-Request-Headers":"content-type,x-csrf-token"})
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.headers["access-control-allow-origin"],"http://localhost:3000")
+        self.assertEqual(set(response.headers["access-control-allow-methods"].split(", ")),{"GET","POST","PATCH"})
+        self.assertEqual(self.client.options(URL+"/me",headers={"Origin":"http://untrusted.example.test","Access-Control-Request-Method":"PATCH"}).status_code,400)
+
+    def test_patch_failure_after_write_and_at_transaction_completion_restores_data(self):
+        self.team(); original=self.post().json()["data"]
+        update=ProjectRepository.update_metadata
+        def fail_after_update(store,*args):
+            update(store,*args)
+            raise StorageUnavailable()
+        with patch.object(ProjectRepository,"update_metadata",fail_after_update):
+            self.assert_error(self.patch_metadata({"name":"Must rollback"}),500,"INTERNAL_ERROR")
+        self.assertEqual(self.client.get(URL+"/me").json()["data"],original)
+        @contextmanager
+        def fail_completion():
+            with project_transaction_on(self.conn) as store:
+                yield store
+                raise StorageUnavailable()
+        self.app.dependency_overrides[get_project_uow]=lambda:fail_completion
+        self.assert_error(self.patch_metadata({"name":"Must rollback"}),500,"INTERNAL_ERROR")
+        self.app.dependency_overrides[get_project_uow]=lambda:lambda:project_transaction_on(self.conn)
+        self.assertEqual(self.client.get(URL+"/me").json()["data"],original)
+
+    def test_patch_unknown_pg_privilege_and_trigger_errors_do_not_become_business_errors(self):
+        self.team(); original=self.post().json()["data"]
+        for error in (psycopg.errors.InsufficientPrivilege("DoNotEchoSQLFixture"),psycopg.errors.RaiseException("DoNotEchoSQLFixture")):
+            with patch.object(ProjectRepository,"update_metadata",side_effect=error):
+                response=self.patch_metadata({"name":"Edit"})
+                self.assert_error(response,500,"INTERNAL_ERROR")
+                self.assertNotIn("DoNotEchoSQLFixture",response.text)
+        self.assertEqual(self.client.get(URL+"/me").json()["data"],original)
 
 
 if __name__ == "__main__":

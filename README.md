@@ -1,18 +1,27 @@
 # Student Project Management System
 
+**พักพัฒนา/ชุดส่งต่อ (2026-11-15):** อ่าน [สรุปงานที่เพิ่มจากฐาน 679913a และผลตรวจชุดส่งต่อ](docs/team/RELEASE_PREPARATION_2026-11-15.md) งานรอบนี้ใช้ branch `feature/project-continuation` และยังไม่รวม branch ของเพื่อน ตรวจ commit/remote ที่ได้รับก่อนเริ่มงาน
+
 ระบบจัดการโครงงานนักศึกษา ใช้ FastAPI + PostgreSQL และ Next.js/TypeScript
 
 **สำหรับทีมที่จะรับงานSubmission/Milestone:** เริ่มที่ [Team Start Here](docs/team/START_HERE.md), [ตั้งค่าWindows](docs/team/LOCAL_SETUP.md), [Databaseแยกเครื่อง](docs/team/DATABASE_SETUP.md) และ [ผลตรวจชุดส่งต่อ](docs/team/HANDOFF_VERIFICATION.md) ใช้โค้ดbasecommitเดียวกันหลังเจ้าของPushแล้ว ข้อมูล/บัญชีในPostgreSQLไม่ติดไปกับGit
 
+**สำหรับทดลองใช้งาน/เตรียมส่งอาจารย์:** อ่าน [คู่มือผู้ใช้](docs/user/USER_GUIDE.md), [Manual UATแบบROLLBACK](docs/uat/MANUAL_UAT.md) และ [ลำดับDemo](docs/user/DEMO_SCRIPT.md) ใช้API8001สำหรับทดลองเขียนตามข้อจำกัดเดิม ไม่ใช้normalmode8000เพื่อseedข้อมูลถาวร UAT20กรณียังNot Runโดยผู้ใช้
+
 ## สถานะปัจจุบัน
+
+- **พื้นที่ทำงาน (2026-11-15):** เพิ่ม `/workspace` จากลิงก์ในหน้าบัญชี นักศึกษาเห็นทีม/Projectของตนจาก APIจริง ส่วน advisor/coordinatorมีทางเข้างานตามบทบาท ตาม [Contract](docs/api/WORKSPACE_OVERVIEW_CONTRACT.md) และ [ผลตรวจ](docs/progress/WORKSPACE_OVERVIEW_IMPLEMENTATION_REPORT.md) ขอบเขตนี้ยังไม่รวม Dashboard metrics/Timeline/Contribution
+- **Evaluation ล่าสุด (2026-11-15):** กรรมการให้คะแนนจำนวนเต็ม 0–100 พร้อมความคิดเห็น บันทึกครั้งเดียว; Team/acceptedAdvisor/กรรมการเห็นรวมและเฉลี่ยเมื่อครบ ส่วน Coordinator เห็นรายบุคคลหลังครบ ตาม [Contract](docs/api/EVALUATIONS_CONTRACT.md) และ [รายงานผลทดสอบ](docs/progress/EVALUATIONS_IMPLEMENTATION_REPORT.md) ยังไม่รวม Submission/Milestone API ของเพื่อนหรือ UAT ระบบรวม
+- **Topic votes (2026-11-15):** กรรมการลงมติและอ่านVoteตนเอง/ผลรวมเมื่อครบ; TeamและacceptedAdvisorอ่านรายชื่อ/ผลรวม/ความคิดเห็นที่ไม่แนบผู้ลงมติหลังครบ; CoordinatorดูVoteรายบุคคล ตาม [Contract](docs/api/TOPIC_VOTES_CONTRACT.md) และ [รายงานผลทดสอบ](docs/progress/TOPIC_VOTES_IMPLEMENTATION_REPORT.md)
+- Coordinator: รายการProjectหลังอาจารย์อนุมัติและเพิ่ม/เปลี่ยน/ถอดกรรมการก่อนVoteแรกที่ `/coordinator/projects`; [CLIเตรียมบัญชีcoordinatorบนเครื่อง](docs/database/COORDINATOR_ACCOUNT_PROVISIONING.md) ให้ผู้ดูแลกรอกเอง
 
 - Backend Auth: สมัคร student, Login, Logout และ GET /api/v1/auth/me
 - Backend Team: POSTสร้างทีม/GETทีมของตน และ GET/POST /api/v1/teams/me/members สำหรับอ่านรายชื่อทีมตน/หัวหน้าเพิ่มmemberด้วยอีเมล ตาม [Members Contract](docs/api/TEAM_MEMBERS_CONTRACT.md); ไม่มีทีมตอบ404 TEAM_NOT_FOUND ตามG-12
 - Frontend Auth: /register, /login และหน้าข้อมูลบัญชีที่ / แบบ Feature-based ใน src/features/auth
 - Database V1: public 14 ตาราง / 86 columns / 28 foreign keys; ส่วนขยาย Auth แยก auth.credentials และ auth.sessions
 - Session คงที่ 8 ชั่วโมง; อีเมลจำลองได้แต่ต้องรูปแบบถูกต้อง รหัสผ่าน ≥8 ตัว มี A–Z และตัวเลขอย่างละ ≥1
-- Frontend Team: /teamsสร้างทีม อ่านทีม/รายชื่อหลังrefresh และหัวหน้าเพิ่มสมาชิกด้วยอีเมล สมาชิกทั่วไปอ่านรายชื่อได้ ไม่มีuser directory; ออก/ถอดสมาชิก/โอนหัวหน้ายังไม่ครบ หน้าบัญชีไม่ใช่Dashboard
-- Project: POST /api/v1/projectsให้หัวหน้าสร้างหนึ่งProjectต่อทีม และGET /api/v1/projects/meให้สมาชิกอ่านทีมตน หน้า/projectsเข้าจากลิงก์ใน/teams มีcreate/readเบื้องต้น ไม่มีDELETE ตาม [Project Contract](docs/api/PROJECT_CREATE_CONTRACT.md)
+- Frontend Team: /teamsสร้าง/อ่าน/แก้ทีม เพิ่มmemberด้วยอีเมล โอนหัวหน้า และออก/ถอดสมาชิกตามสิทธิ์/phaseที่ยืนยันแล้ว ไม่มีuser directory อ่านวิธีทดลองแต่ละบทบาทในคู่มือผู้ใช้
+- Project: หัวหน้าสร้างหนึ่งProjectต่อทีม สมาชิกอ่านของทีมตน และหัวหน้าแก้ชื่อ/คำอธิบายตามphaseผ่านหน้า/projects ไม่มีDELETE ตาม [Create Contract](docs/api/PROJECT_CREATE_CONTRACT.md)/[Update Contract](docs/api/PROJECT_UPDATE_CONTRACT.md)
 - Advisor invitations: /projects/advisor-invitationsให้ทีมอ่านประวัติ/หัวหน้าส่งและยกเลิก ส่วน/advisor/invitationsให้อาจารย์ตอบรับ/ปฏิเสธ เลือกจากรายชื่อและตรวจสิทธิ์ตามG-12; มีบัญชีadvisor1บัญชีที่ผู้ดูแลบันทึกตามอนุมัติแล้ว ไม่ใช่บัญชีที่ค้างจากtests
 - เตรียมบัญชีadvisor: มี [CLIสำหรับผู้ดูแลและผลบันทึก](docs/database/ADVISOR_ACCOUNT_PROVISIONING.md) DefaultDRY_RUN/ROLLBACK รับรหัสผ่านผ่านhiddenTerminal ไม่แก้บัญชีเดิม --applyบันทึกบัญชีที่อนุมัติ1บัญชีแล้ว บัญชีอื่นยังต้องอยู่ในขอบเขตที่อนุมัติ
 

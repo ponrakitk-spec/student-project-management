@@ -6,16 +6,27 @@ Next.js App Router + TypeScript สำหรับ Student Project Management Sy
 
 ## ขอบเขตปัจจุบัน
 
+- `/coordinator/projects` และ `/coordinator/projects/[id]/committee`: coordinatorดูProjectหลังมีapprovedSubmission เลือกadvisorเพื่อเพิ่ม/เปลี่ยน/ถอดกรรมการก่อนVoteแรก พร้อมconfirmation/pending/GETreconcile ตาม [Contract](../docs/api/COMMITTEE_ASSIGNMENTS_CONTRACT.md) บัญชีเตรียมผ่านCLI ไม่เปิดสมัครcoordinatorเอง
+- `/committee/projects` → `/committee/projects/[id]/topic-votes`: advisorที่ได้รับแต่งตั้งอ่านsnapshotและVoteตนเอง ลงมติครั้งเดียวพร้อมconfirmation และเห็นผลรวมเมื่อครบ
+- `/projects/committee`: สมาชิกทีมปัจจุบันอ่านรายชื่อกรรมการและผลหัวข้อ; `/advisor/projects` → `/advisor/projects/[id]/committee`: acceptedAdvisorอ่านข้อมูลแบบเดียวกัน ไม่คืนVoteรายบุคคล/author/เวลาให้สองกลุ่มนี้ และไม่แสดงcommentsก่อนครบ
+- `/coordinator/projects/[id]/topic-votes`: Coordinatorอ่านVoteรายบุคคลเฉพาะProject/รอบapprovedที่มีสิทธิ์ ดู [Topic Contract](../docs/api/TOPIC_VOTES_CONTRACT.md) และ [ผลทดสอบ](../docs/progress/TOPIC_VOTES_IMPLEMENTATION_REPORT.md)
+- `/committee/projects/[id]/evaluations`: กรรมการอ่านของตน ให้คะแนน 0–100/ความคิดเห็นพร้อมยืนยัน บันทึกครั้งเดียว เปิดฟอร์มเมื่อหัวข้อผ่านและมี completed Milestone อย่างน้อยหนึ่ง
+- `/projects/evaluations`, `/advisor/projects/[id]/evaluations`: สมาชิกทีมปัจจุบัน/อาจารย์ที่ตอบรับอ่านรวมและเฉลี่ยเมื่อกรรมการประเมินครบ
+- `/coordinator/projects/[id]/evaluations`: Coordinatorอ่านรายบุคคลหลังครบเท่านั้น ก่อนครบไม่เปิดคะแนน/comment ของผู้อื่น ดู [Evaluation Contract](../docs/api/EVALUATIONS_CONTRACT.md) และ [ผลทดสอบ](../docs/progress/EVALUATIONS_IMPLEMENTATION_REPORT.md) ยังไม่เชื่อม file download หรือ Submission/Milestone API ของเพื่อน
+
 - `/register`: สมัครเป็น student ด้วยชื่อ อีเมลจำลองรูปแบบถูกต้อง และรหัสผ่าน ≥8 ตัว มี A–Z/ตัวเลขอย่างละ ≥1
 - `/login`: เข้าสู่ระบบด้วยบัญชีที่มีอยู่ สมัครสำเร็จแล้วต้อง Login เอง
-- `/`: ตรวจ session ผ่าน Backend และแสดงชื่อ/อีเมล/บทบาท พร้อม Logout ยังไม่ใช่ Dashboard ST-01
-- `/teams`: studentสร้างทีมพร้อมตนเป็นหัวหน้า อ่านทีม/รายชื่อสมาชิกหลังrefresh หัวหน้าเพิ่มmemberด้วยอีเมลตรงตัว สมาชิกธรรมดาอ่านรายชื่อได้; กรณีไม่มีทีมใช้404TEAM_NOT_FOUNDตามG-12 ไม่มีuser directory
-- `/projects`: หัวหน้าสร้างProjectของทีม สมาชิกอ่านProjectได้ เข้าจากลิงก์ใน/teams; ไม่มีทีมแนะนำไป/teams มีทีมแต่ไม่มีProjectให้leaderเห็นformและmemberเห็นข้อความรอ ไม่มีProject delete/update UI
+- `/`: ตรวจ session ผ่าน Backend และแสดงชื่อ/อีเมล/บทบาท พร้อม Logout และลิงก์ **พื้นที่ทำงาน →** Loginยังกลับหน้านี้ตามเดิม
+- `/workspace`: studentอ่านทีม/บทบาทสมาชิก/Projectตนจาก APIเดิม พร้อมลิงก์ไปจัดการ; advisor/coordinatorเห็นทางเข้างานตามบทบาท มี loading/error/retry/empty และ revalidate sessionเมื่อกลับหน้า ไม่ใช่ Dashboard metricsเต็ม ตาม [Contract](../docs/api/WORKSPACE_OVERVIEW_CONTRACT.md) และ [ผลตรวจ](../docs/progress/WORKSPACE_OVERVIEW_IMPLEMENTATION_REPORT.md)
+
+วิธีใช้แต่ละบทบาทอยู่ใน [คู่มือผู้ใช้](../docs/user/USER_GUIDE.md) และ [Demo](../docs/user/DEMO_SCRIPT.md) สำหรับทดลองเขียนด้วยUIให้ใช้ [Manual UAT](../docs/uat/MANUAL_UAT.md): Frontend3000ชี้rollbackAPI8001และปิดพร้อมตรวจsnapshotเมื่อจบ ไม่ใช้API8000เพื่อทดลองบันทึกถาวร
+- `/teams`: studentสร้างทีมพร้อมตนเป็นหัวหน้า อ่านทีม/รายชื่อหลังrefresh หัวหน้าแก้ทีม/เพิ่มmember/โอนหัวหน้า/ถอดmemberตามสิทธิ์ สมาชิกออกเองตามC-02ได้; ไม่มีทีมใช้404TEAM_NOT_FOUNDตามG-12 ไม่มีuser directory
+- `/projects`: หัวหน้าสร้างProject สมาชิกอ่านProjectของทีมได้ และหัวหน้าแก้metadataตามphase มีทีมแต่ไม่มีProjectให้leaderเห็นformและmemberเห็นข้อความรอ ไม่มีProject delete UI
 - `/projects/advisor-invitations`: สมาชิกอ่านประวัติ หัวหน้าเลือกอาจารย์/ส่ง/ยกเลิกpending หลังacceptedเปลี่ยนอาจารย์ไม่ได้
 - `/advisor/invitations`: advisorอ่านคำเชิญตน/ตอบรับ/ปฏิเสธ จากลิงก์ในหน้าบัญชี หลังrejected/cancelledไม่คืนliveProjectcontext บัญชีadvisorต้องให้ผู้ดูแลเตรียมก่อน ไม่เปิดrole signup
 - Session คงที่ 8 ชั่วโมง; โหลดหน้าใหม่และกลับมาโฟกัสหน้าจะตรวจ `/auth/me` อีกครั้ง เมื่อได้ 401 จึงกลับ Login ส่วน network/server error แสดงปุ่มลองใหม่
 
-ผู้ใช้เลือก **Feature-based**: routesอยู่ในsrc/app ส่วนAuth/Team/Project/Invitationsอยู่ในsrc/features/auth, teams, projects, advisor-invitations ไม่มีtoken/password/user/team/Project/invitation cacheในlocalStorage/sessionStorage ใช้HttpOnly sessioncookie อ่านเฉพาะCSRFcookieสำหรับwrite requestsที่ต้องใช้
+ผู้ใช้เลือก **Feature-based**: routesอยู่ในsrc/app ส่วนfeaturesอยู่ในsrc/features/auth, teams, projects, advisor-invitations, committee-assignments, topic-votes ไม่มีtoken/password/user/team/Project/invitation/vote cacheในlocalStorage/sessionStorage ใช้HttpOnly sessioncookie อ่านเฉพาะCSRFcookieสำหรับwrite requestsที่ต้องใช้
 
 ## เปิดในเครื่อง
 
@@ -50,7 +61,7 @@ npm run test:e2e
 
 Browser tests ใช้ Microsoft Edge ที่ติดตั้งในเครื่องและ Playwright 1.65.0 ต้องให้ ports **3000 และ 8001 ว่าง** ชุดทดสอบเปิด Frontend บน 3000 โดย override API ไป fixture 8001 เฉพาะ process ทดสอบ ไม่ใช้ Backend ปกติ 8000 และบล็อก Auth requests ที่ออกนอก 8001
 
-Fixtureใช้student_project_management_v1_testและouterrollback-onlytransactionทุกrequestเป็นsavepoint เวอร์ชันคำเชิญเปิดexplicitowner-fixturemodeเฉพาะtestprocess เพื่อเตรียมadvisor2/coordinator1ด้วยproject_ownerที่ไม่ใช่superuser แล้วswitchเป็นeffectiveproject_appก่อนserveHTTPทั้งหมด Runtime8000ยังใช้directproject_appตามเดิม ไม่มีadminfallback ดู [roleboundary](../docs/progress/ADVISOR_INVITATIONS_IMPLEMENTATION_REPORT.md) ก่อนรัน ใช้npm runnerเพื่อได้uniquetag ไม่เรียกPlaywrightตรงสำหรับsuiteนี้ ก่อน/หลังตรวจmetadata/ACL/rowcountsและfixtureconnections=0 ไม่รวมidentitysequencesที่ROLLBACKไม่คืน ไม่พิมพ์secrets
+Fixtureใช้student_project_management_v1_testและouterrollback-onlytransactionทุกrequestเป็นsavepoint เปิดexplicitowner-fixturemodeเฉพาะtestprocess เตรียมstaffด้วยproject_ownerที่ไม่ใช่superuser (ปัจจุบันadvisor5/coordinator1และstudentphasefixturesสำหรับCommittee/Topic) แล้วswitchเป็นeffectiveproject_appก่อนserveHTTPทั้งหมด Runtime8000ยังใช้directproject_appตามเดิม ไม่มีadminfallback ดู [roleboundary](../docs/progress/ADVISOR_INVITATIONS_IMPLEMENTATION_REPORT.md) และ [Topicfixture](../docs/progress/TOPIC_VOTES_IMPLEMENTATION_REPORT.md) ก่อนรัน ใช้npm runnerเพื่อได้uniquetag ไม่เรียกPlaywrightตรงสำหรับsuiteนี้ ก่อน/หลังตรวจmetadata/ACL/rowcountsและfixtureconnections=0 ไม่รวมidentitysequencesที่ROLLBACKไม่คืน ไม่พิมพ์secrets
 
 ผลล่าสุด **2026-11-07**: lint/TypeScript/build PASS, Browser **42/42 PASS** (Auth5+Team8+member8+Project9+invitation12), baselineหลังROLLBACK PASS เก็บข้อมูลเดิมไว้ ภาพDesktop/Mobileอยู่ในignoredtest-results ปิดtracesเพื่อไม่เก็บsessiontokens อย่าเปิดnormaldevพร้อมBrowser suiteบนportเดียวกัน Backend174tests/direct app boundary smokeผ่าน ดู [Invitations Report](../docs/progress/ADVISOR_INVITATIONS_IMPLEMENTATION_REPORT.md)
 

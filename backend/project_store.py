@@ -86,3 +86,36 @@ class ProjectRepository:
         self.conn.execute("""SET CONSTRAINTS public.c_team_created_has_leader,
             public.c_team_member_cardinality IMMEDIATE""")
         return self.public_project(row)
+
+    def update_metadata(self, project_id, name, description):
+        # Controlled V1 operation supplies the narrowly scoped UPDATE privilege.
+        # Keep SQL guards enabled; never fall back to owner/direct UPDATE.
+        self.conn.execute("SELECT public.v1_update_project_metadata(%s,%s,%s)",
+                          (project_id, name, description))
+
+    def update(self, actor, changes):
+        own = self.own_team(actor)
+        if own is None:
+            raise ProjectError("TEAM_NOT_FOUND")
+        team_id = own[0]
+        self.conn.execute("SELECT pg_catalog.set_config('app.actor_user_id',%s,true)", (actor,))
+        self.conn.execute("SELECT public.v1_lock_team(%s)", (team_id,))
+        own = self.own_team(actor)
+        if own is None or own[0] != team_id:
+            raise ProjectError("TEAM_NOT_FOUND")
+        current = self.current(actor)
+        if own[1] != "leader":
+            raise ProjectError("PROJECT_UPDATE_FORBIDDEN")
+        self.conn.execute("SELECT public.v1_lock_project(%s)", (current["id"],))
+        # Locks are held until transaction completion. Read omitted fields only
+        # now, so partial requests cannot replace them with a stale client value.
+        current = self.current(actor)
+        editable = self.conn.execute("SELECT public.v1_topic_metadata_editable(%s)",
+                                     (current["id"],)).fetchone()[0]
+        if not editable:
+            raise ProjectError("PROJECT_METADATA_LOCKED")
+        self.update_metadata(current["id"], changes.get("name", current["name"]),
+                             changes.get("description", current["description"]))
+        self.conn.execute("""SET CONSTRAINTS public.c_team_created_has_leader,
+            public.c_team_member_cardinality IMMEDIATE""")
+        return self.current(actor)

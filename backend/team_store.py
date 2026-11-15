@@ -105,12 +105,118 @@ class TeamRepository:
         return self.conn.execute("""INSERT INTO public.teams(name,description)
             VALUES (%s,%s) RETURNING id,name,description""", (name, description)).fetchone()
 
+    def update_metadata(self, team_id, name, description):
+        self.conn.execute("SELECT public.v1_update_team_metadata(%s,%s,%s)",
+                          (team_id, name, description))
+
+    def update(self, actor, changes):
+        own = self.current_team(actor)
+        if own is None:
+            raise TeamMemberError("TEAM_NOT_FOUND")
+        team_id = own[0]
+        self.conn.execute("SELECT pg_catalog.set_config('app.actor_user_id',%s,true)", (actor,))
+        self.lock_parent(team_id)
+        own = self.current_team(actor)
+        if own is None or own[0] != team_id:
+            raise TeamMemberError("TEAM_NOT_FOUND")
+        if own[4] != "leader":
+            raise TeamMemberError("TEAM_UPDATE_FORBIDDEN")
+        project = self.conn.execute("SELECT id FROM public.projects WHERE team_id=%s", (team_id,)).fetchone()
+        if project is not None:
+            self.conn.execute("SELECT public.v1_lock_project(%s)", (project[0],))
+            if not self.conn.execute("SELECT public.v1_topic_metadata_editable(%s)", (project[0],)).fetchone()[0]:
+                raise TeamMemberError("TEAM_METADATA_LOCKED")
+        # Preserve omitted fields from the locked row, not from the browser.
+        self.update_metadata(team_id, changes.get("name", own[1]), changes.get("description", own[2]))
+        self.conn.execute("""SET CONSTRAINTS public.c_team_created_has_leader,
+            public.c_team_member_cardinality IMMEDIATE""")
+        row = self.current_team(actor)
+        return {"id":str(row[0]), "name":row[1], "description":row[2],
+                "membership":{"id":str(row[3]), "role":row[4]}}
+
     def lock_parent(self, team_id):
         self.conn.execute("SELECT public.v1_lock_team(%s)", (team_id,))
+
+    def target_member(self, team_id, membership_id):
+        return self.conn.execute("SELECT user_id,role FROM public.team_members WHERE team_id=%s AND id=%s",
+                                 (team_id, membership_id)).fetchone()
+
+    def transfer_roles(self, team_id, target_user_id):
+        # The V1 helper takes a user ID, never a team_members ID. No raw UPDATE
+        # or transfer-control GUC flags are exposed to the request.
+        self.conn.execute("SELECT public.v1_transfer_team_leader(%s,%s)", (team_id, target_user_id))
+
+    def transfer_leader(self, actor, membership_id):
+        own = self.current_team(actor)
+        if own is None:
+            raise TeamMemberError("TEAM_NOT_FOUND")
+        team_id = own[0]
+        self.conn.execute("SELECT pg_catalog.set_config('app.actor_user_id',%s,true)", (actor,))
+        self.lock_parent(team_id)
+        own = self.current_team(actor)
+        if own is None or own[0] != team_id:
+            raise TeamMemberError("TEAM_NOT_FOUND")
+        if own[4] != "leader":
+            raise TeamMemberError("TEAM_LEADER_TRANSFER_FORBIDDEN")
+        target = self.target_member(team_id, membership_id)
+        if target is None:
+            raise TeamMemberError("TEAM_MEMBER_NOT_FOUND")
+        if str(target[0]) == actor or target[1] != "member":
+            raise TeamMemberError("LEADER_TARGET_INVALID")
+        # Two role changes are atomic. Own the deferred check timing even when
+        # the caller's previous operation forced constraints IMMEDIATE.
+        self.conn.execute("SET CONSTRAINTS public.c_team_member_cardinality DEFERRED")
+        self.transfer_roles(team_id, target[0])
+        self.conn.execute("""SET CONSTRAINTS public.c_team_created_has_leader,
+            public.c_team_member_cardinality IMMEDIATE""")
+        row = self.current_team(actor)
+        return {"id":str(row[0]), "name":row[1], "description":row[2],
+                "membership":{"id":str(row[3]), "role":row[4]}}
 
     def insert_leader(self, team_id, actor):
         return self.conn.execute("""INSERT INTO public.team_members(team_id,user_id,role)
             VALUES (%s,%s,'leader') RETURNING id,user_id,role""", (team_id, actor)).fetchone()
+
+    def exit_blocked_by_task(self, membership_id):
+        # Called only while holding the team's Project lock. Every V1 Task/
+        # assignee mutation takes that same lock; the SQL helper checks again.
+        return self.conn.execute("""SELECT EXISTS(
+            SELECT 1 FROM public.task_assignees a JOIN public.tasks t ON t.id=a.task_id
+            WHERE a.team_member_id=%s AND t.status='in_progress'
+              AND NOT EXISTS(SELECT 1 FROM public.task_assignees other
+                  WHERE other.task_id=t.id AND other.team_member_id<>a.team_member_id))""",
+            (membership_id,)).fetchone()[0]
+
+    def controlled_exit(self, membership_id):
+        self.conn.execute("SELECT public.v1_exit_team_member(%s)", (membership_id,))
+
+    def exit_member(self, actor, membership_id=None):
+        own = self.current_team(actor)
+        if own is None:
+            raise TeamMemberError("TEAM_NOT_FOUND")
+        team_id = own[0]
+        self.conn.execute("SELECT pg_catalog.set_config('app.actor_user_id',%s,true)", (actor,))
+        self.lock_parent(team_id)
+        own = self.current_team(actor)
+        if own is None or own[0] != team_id:
+            raise TeamMemberError("TEAM_NOT_FOUND")
+        if membership_id is not None and own[4] != "leader":
+            raise TeamMemberError("TEAM_MEMBER_REMOVAL_FORBIDDEN")
+        membership_id = own[3] if membership_id is None else membership_id
+        target = self.target_member(team_id, membership_id)
+        if target is None:
+            raise TeamMemberError("TEAM_MEMBER_NOT_FOUND")
+        if target[1] == "leader":
+            raise TeamMemberError("TEAM_LEADERSHIP_TRANSFER_REQUIRED")
+        project = self.conn.execute("SELECT id FROM public.projects WHERE team_id=%s", (team_id,)).fetchone()
+        if project is not None:
+            self.conn.execute("SELECT public.v1_lock_project(%s)", (project[0],))
+            if self.exit_blocked_by_task(membership_id):
+                raise TeamMemberError("MEMBER_EXIT_BLOCKED_BY_TASK")
+        self.controlled_exit(membership_id)
+        self.conn.execute("""SET CONSTRAINTS public.c_team_created_has_leader,
+            public.c_team_member_cardinality, public.c_task_active_assignee_from_task,
+            public.c_task_active_assignee_on_remove IMMEDIATE""")
 
     def create(self, name, description, actor):
         if self.membership_exists(actor):

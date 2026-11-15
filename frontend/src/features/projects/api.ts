@@ -47,10 +47,18 @@ export function createProject(name: string, description: string, signal?: AbortS
     body: JSON.stringify({ name: trimAscii(name), description: trimAscii(description) || null }) });
 }
 
+export function updateProject(changes: { name?: string; description?: string | null }, signal?: AbortSignal): Promise<Project> {
+  const csrf = document.cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith("spms_csrf="))?.slice("spms_csrf=".length);
+  return request("/me", { method: "PATCH", signal, headers: { "Content-Type": "application/json", ...(csrf ? { "X-CSRF-Token": csrf } : {}) },
+    body: JSON.stringify(changes) });
+}
+
 export function projectErrorMessage(cause: unknown): string {
   if (!(cause instanceof ProjectApiError)) return "ไม่สามารถยืนยันผลการทำรายการได้ กรุณาตรวจสอบโครงงานอีกครั้ง";
   return ({ AUTHENTICATION_REQUIRED: "กรุณาเข้าสู่ระบบอีกครั้ง", PROJECT_ACCESS_FORBIDDEN: "หน้านี้สำหรับโครงงานของทีมนักศึกษาเท่านั้น",
     PROJECT_CREATION_FORBIDDEN: "เฉพาะหัวหน้าทีมเท่านั้นที่สร้างโครงงานได้", TEAM_NOT_FOUND: "คุณยังไม่มีทีม กรุณาไปที่หน้าทีมก่อน",
+    PROJECT_UPDATE_FORBIDDEN: "เฉพาะหัวหน้าทีมปัจจุบันเท่านั้นที่แก้ไขโครงงานได้",
+    PROJECT_METADATA_LOCKED: "ยังแก้ไขข้อมูลโครงงานในขั้นตอนนี้ไม่ได้ กรุณาตรวจสอบผลการส่งโครงงาน",
     PROJECT_ALREADY_EXISTS: "ทีมของคุณมีโครงงานแล้ว กรุณาตรวจสอบโครงงาน", CSRF_INVALID: "ไม่สามารถยืนยันคำขอได้ กรุณาเข้าสู่ระบบอีกครั้ง",
     ORIGIN_NOT_ALLOWED: "ไม่สามารถทำรายการจากหน้านี้ได้ กรุณาติดต่อผู้ดูแลระบบ", VALIDATION_ERROR: "กรุณาตรวจสอบข้อมูลโครงงาน",
     INTERNAL_ERROR: "ระบบยังไม่พร้อมใช้งาน กรุณาลองอีกครั้ง" } as Record<string, string>)[cause.code] ?? "ไม่สามารถทำรายการได้ กรุณาตรวจสอบโครงงานอีกครั้ง";

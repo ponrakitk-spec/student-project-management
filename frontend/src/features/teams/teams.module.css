@@ -48,3 +48,26 @@
 .addMember { margin-top: 24px; }
 .addMember > .hint { margin-top: 5px; margin-bottom: 18px; }
 .memberNotice { color: #28714e; background: #eff9f3; border: 1px solid #d7eddf; border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.8; margin-bottom: 15px; }
+.secondaryButton { min-height: 49px; border: 1px solid #d8e0ea; border-radius: 8px; padding: 12px 16px; margin-top: 16px; background: #fff; color: #255b95; cursor: pointer; font: inherit; font-size: 14px; }
+.secondaryButton:focus-visible { outline: 3px solid #7eb3ed; outline-offset: 3px; }
+.secondaryButton:disabled { opacity: .6; cursor: wait; }
+.editPanel { margin-top: 24px; }
+.editPanel h2 { color: #34445b; font-size: 18px; line-height: 1.8; }
+.editPanel > p { margin: 6px 0 18px; }
+.editActions { display: flex; gap: 12px; }
+.editActions .secondaryButton { margin-top: 0; }
+.field select { width: 100%; min-width: 0; min-height: 49px; border: 1px solid #d8e0ea; border-radius: 8px; background: #fff; color: #23354f; padding: 12px 14px; font: inherit; font-size: 14px; }
+.field select:focus { outline: 3px solid #7eb3ed; outline-offset: 2px; }
+.field select:disabled { background: #f5f7fa; }
+.transferSection { margin-top: 30px; padding-top: 24px; border-top: 1px solid #e0e7ef; }
+.transferSection h3 { font-size: 16px; color: #23354f; line-height: 1.8; }
+.transferSection > .hint { margin: 6px 0 18px; }
+.transferConfirmation { border: 1px solid #d8e0ea; border-radius: 8px; padding: 12px 14px; background: #f5f8fc; color: #34445b; font-size: 13px; line-height: 1.85; overflow-wrap: anywhere; }
+.transferConfirmation p + p { margin-top: 8px; }
+.memberList li { flex-direction: column; }
+.memberLine { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; width: 100%; }
+.exitAction { width: 100%; margin-top: 12px; }
+.exitAction .transferConfirmation .editActions { margin-top: 14px; }
+.exitAction .editActions .primaryButton { flex: 1; width: auto; min-width: 0; }
+.exitAction .editActions .secondaryButton { flex: none; white-space: nowrap; }
+.exitAction > .errorBox { margin-top: 12px; }

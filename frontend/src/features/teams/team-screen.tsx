@@ -7,6 +7,7 @@ import { AuthShell } from "@/features/auth/auth-shell";
 import { useSession } from "@/features/auth/use-session";
 import authStyles from "@/features/auth/auth.module.css";
 import { TeamCreateForm } from "./team-create-form";
+import { TeamEditForm } from "./team-edit-form";
 import { useCurrentTeam } from "./use-current-team";
 import { TeamMembers } from "./team-members";
 import styles from "./teams.module.css";
@@ -18,6 +19,7 @@ export function TeamScreen() {
   const team = useCurrentTeam(actorId);
   const onUnauthenticated = useCallback(() => router.replace("/login?reason=session"), [router]);
   const [notice, setNotice] = useState<{ owner?: string; teamId: string; text: string } | null>(null);
+  const [editing, setEditing] = useState<{ owner?: string; teamId: string } | null>(null);
   useEffect(() => {
     if (session.state.status === "unauthenticated" || team.state.status === "unauthenticated") router.replace("/login?reason=session");
   }, [session.state.status, team.state.status, router]);
@@ -38,12 +40,30 @@ export function TeamScreen() {
         <div className={styles.cardTop}><span className={styles.teamIcon} aria-hidden="true">◇</span><div><p className={styles.cardLabel}>บทบาทของคุณ</p><strong>{data.membership.role === "leader" ? "หัวหน้าทีม" : "สมาชิกทีม"}</strong></div></div>
         <dl className={styles.teamDetails}><div><dt>ชื่อทีม</dt><dd>{data.name}</dd></div><div><dt>คำอธิบายทีม</dt><dd className={styles.description}>{data.description ?? "ยังไม่มีคำอธิบายทีม"}</dd></div></dl>
       </section>
+      {data.membership.role === "leader" && (editing?.owner === actorId && editing?.teamId === data.id
+        ? <TeamEditForm key={`edit:${actorId}:${data.id}`} team={data} onCancel={() => setEditing(null)}
+          onCheck={() => { setEditing(null); setNotice(null); team.refresh(); }} onUnauthenticated={onUnauthenticated}
+          onUpdated={(updated) => {
+            if (updated.id !== data.id || updated.membership.id !== data.membership.id || updated.membership.role !== "leader") { setEditing(null); session.retry(); team.refresh(); return; }
+            team.acceptUpdated(updated); setEditing(null); setNotice({ owner: actorId, teamId: updated.id, text: "แก้ไขทีมสำเร็จแล้ว" });
+          }} />
+        : <button type="button" className={styles.secondaryButton} onClick={() => { setNotice(null); setEditing({ owner: actorId, teamId: data.id }); }}>แก้ไขทีม</button>)}
       <Link className={styles.projectLink} href="/projects">โครงงานของทีม →</Link>
       <TeamMembers key={`${actorId}:${data.id}`} actorId={session.state.user.id}
-        onUnauthenticated={onUnauthenticated} onTeamChanged={team.refresh} />
+        onUnauthenticated={onUnauthenticated} onTeamChanged={team.refresh}
+        onMembershipLeft={() => {
+          setEditing(null); setNotice({ owner: actorId, teamId: data.id, text: "ออกจากทีมสำเร็จแล้ว" }); team.refresh();
+        }}
+        onLeaderTransferred={(updated) => {
+          setEditing(null);
+          if (updated.id !== data.id || updated.membership.id !== data.membership.id || updated.membership.role !== "member") { session.retry(); team.refresh(); return; }
+          setNotice({ owner: actorId, teamId: data.id, text: "โอนหัวหน้าสำเร็จแล้ว คุณเป็นสมาชิกทีม" });
+          team.refresh();
+        }} />
     </AuthShell>;
   }
   return <AuthShell>{back}
+    {notice && notice.owner === actorId && notice.text === "ออกจากทีมสำเร็จแล้ว" && <p className={authStyles.notice} role="status">{notice.text}</p>}
     <div className={authStyles.heading}><span className={authStyles.sectionLabel}>เริ่มต้นทีมของคุณ</span><h1>สร้างทีมของคุณ</h1><p>ตั้งชื่อทีมและเพิ่มคำอธิบายเพื่อเริ่มต้นทำงานร่วมกัน</p></div>
     <TeamCreateForm onUnauthenticated={() => router.replace("/login?reason=session")} onCheckTeam={team.refresh}
       onCreated={(created) => {
