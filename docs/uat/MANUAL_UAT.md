@@ -36,7 +36,7 @@ try {
 }
 ```
 
-**อย่าเปิด normal Backend8000เพื่อทดลองเขียนแทน:** โหมด8000COMMITตามปกติ ส่วน8001ยืมconnectionภายในouter transactionแบบforce_rollback ทั้ง7UOWและยกเลิกข้อมูลเมื่อปิด สำเร็จ201ในโหมด8001จึงไม่ได้หมายความว่าข้อมูลจะคงอยู่หลังหยุดserver
+**อย่าเปิด normal Backend8000เพื่อทดลองเขียนแทน:** โหมด8000COMMITตามปกติ ส่วน8001ยืมconnectionภายในouter transactionแบบforce_rollback ทั้ง10UOWและยกเลิกข้อมูลเมื่อปิด สำเร็จ201ในโหมด8001จึงไม่ได้หมายความว่าข้อมูลจะคงอยู่หลังหยุดserver
 
 ### Terminal B — ตรวจ Backendแล้วเปิด Frontend
 
@@ -99,7 +99,18 @@ try {
 | UA19 | BrowserDesktop/Mobile/keyboard | กรอกและอ่านได้ ไม่มีhorizontal overflow โฟกัสมองเห็น ใช้Tabเข้าลิงก์/ปุ่มได้ | [Workspace visual/keyboard](../progress/WORKSPACE_OVERVIEW_IMPLEMENTATION_REPORT.md) | Not Run |
 | UA20 | จบทุกการทดลองและserver8001ปิด | เปรียบเทียบsnapshot metadata/ACL/rowcountsกลับเดิม fixture connection0 | ขั้นตอนท้ายเอกสารนี้ | Not Run |
 
-UA14–UA16และส่วนTaskของUA12ต้องมีphaseที่เหมาะสม ปัจจุบันยังไม่รวมSubmission/Milestone API/UIของเพื่อน จึงไม่อ้างว่าจัดเตรียมครบจากUIในรอบนี้ อ่านได้ว่าNot Readyหากขาดprecondition ไม่ใช้SQLสร้าง/แก้phaseหรือgrantเอง
+**เพิ่มรอบ 2026-11-16:** มี Submission/Milestone/Task API/UI สำหรับทีมแล้ว จัดเตรียม approved Submission, Task/assignee และ completed Milestone ผ่านเว็บตามกฎได้ ไม่เปลี่ยนผลจริงของกรณีเดิมเป็น PASS จากผล automated tests
+
+เพิ่มสี่กรณีด้านล่าง รวมแผน 24 กรณี ให้ทำก่อนจบรอบ UA20:
+
+| ID | Preconditions | Expected | หลักฐาน automated | ผลจริงโดยผู้ใช้ |
+| --- | --- | --- | --- | --- |
+| UA21 | หัวหน้าทีม/Project/accepted advisor พร้อม Login | ส่ง PDF/PPTX หนึ่งไฟล์, refresh/download ได้; อาจารย์อนุมัติหรือขอแก้ไขพร้อมคำแนะนำและยืนยันครั้งเดียว; เก็บรอบเก่าและส่งรอบใหม่ได้เมื่ออนุญาต | [Submission Browser](../../frontend/tests/submissions.spec.ts) | Not Run |
+| UA22 | ทีมมี Project; หัวหน้า/member พร้อม | หัวหน้าสร้าง/แก้/ยืนยันลบ Milestone ว่าง สมาชิกอ่าน; สถานะ derive ไม่ editable; Task/first-score cases ใช้เมื่อมี precondition จริงเท่านั้น | [Milestone Browser](../../frontend/tests/milestones.spec.ts) | Not Run |
+| UA23 | Milestone/ทีมปัจจุบัน ไม่มี Evaluation แรก | หัวหน้าสร้าง/แก้/มอบหมาย/ยืนยันถอน-ลบ Task สมาชิกเปลี่ยนสถานะตาม V1; in_progressห้ามไร้ผู้รับผิดชอบ; ถอนแล้วมี history จริง และลบ Task cascade ตามกฎ | [Task Browser](../../frontend/tests/tasks.spec.ts) | Not Run |
+| UA24 | หัวข้อล่าสุดผ่านมติและกรรมการได้รับแต่งตั้งถูกต้อง | ทำ Task จน Milestone completed ผ่านเว็บ จากนั้นกรรมการให้คะแนนได้; คะแนนแรกล็อกงานและไม่เปิดผลผู้อื่นก่อนครบ | [Task→Evaluation Browser](../../frontend/tests/tasks.spec.ts) | Not Run |
+
+หากขาด precondition ให้ระบุ Not Ready ไม่ใช้ SQL สร้าง/แก้ phase หรือ grant เอง และไม่บันทึกข้อมูลจำลองถาวรเพื่อให้กดทดสอบได้
 
 ## 4. จบรอบและตรวจ ROLLBACK
 

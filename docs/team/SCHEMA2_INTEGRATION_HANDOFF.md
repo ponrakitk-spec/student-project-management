@@ -1,5 +1,11 @@
 # บันทึกรับช่วงจาก feature/database-schema2
 
+**รอบ Task ต่อเนื่อง 2026-11-16:** เจ้าของอนุมัติ [Task/Assignee/History ครบ workflow สำหรับทีม](../api/TASKS_CONTRACT.md) และอนุมัติจบรอบทดลองก่อนตรวจ DB/Browserแล้ว พัฒนาต่อจากงานเพื่อนบน branch รวมตาม [รายงาน Task](../progress/TASK_IMPLEMENTATION_REPORT.md) โดยไม่เปลี่ยน branch เพื่อน/Schema/RBAC/Supabase และไม่บันทึก fixture ถาวรเพิ่ม บัญชี CLI ที่ผู้ใช้เพิ่ม2บัญชีถูกเก็บไว้ใน baseline ก่อนปิดรอบ
+
+**รับช่วงพัฒนาต่อ 2026-11-16:** เจ้าของสั่งทำส่วนเพื่อนที่ยังขาดและยืนยัน Milestone สำหรับทีมแล้ว เพิ่ม Submission UI และ Milestone API/UI บน `feature/team-integration` ตาม [รายงานต่อเนื่อง](../progress/PEER_WORK_CONTINUATION_REPORT.md) ไม่เปลี่ยน branch เพื่อน และยังไม่ทำ Task API/หน้าบทบาทอื่น/Supabase เอกสาร snapshot/ข้อเสนอเก่าด้านล่างเก็บไว้เป็นประวัติ
+
+**รอบรวมงาน 2026-11-16:** เจ้าของยืนยัน [ขอบเขตรวม Backend Submission](INTEGRATION_REVIEW_2026-11-16.md) แล้ว รับ source จาก `31c4fcb` บน local `feature/team-integration` จาก `6040702` พร้อมแก้ B01/B03 ในชุดรวม และคง connection policy เดิมสำหรับ B02 ดู [รายงาน integration/ผลทดสอบ/งานที่ยังรอ](../progress/SUBMISSION_INTEGRATION_REPORT.md) ไม่แก้ branch เพื่อน/Schema/RBAC หรือเปิด Supabase ส่วน B01–B03 ด้านล่างเป็นหลักฐานของ snapshot ก่อนแก้ ไม่ใช่สถานะ runtime ของชุดรวม
+
 ตรวจ 2026-11-14 (Asia/Bangkok) · ฐานเจ้าของ `679913a` · snapshot เพื่อน `31c4fcb881ddff12d2f0a35b1e92c3c20eee8764`
 
 เอกสารนี้เป็นบันทึกใน local `feature/project-continuation` ไม่ใช่การแก้งานเพื่อน/คำสั่ง merge/อนุมัติ requirement เพิ่ม ดู [รายงานความคืบหน้า](../progress/2026-11-14_CONTINUATION_REVIEW.md) และ [Submission work package](SUBMISSION_WORK_PACKAGE.md)
@@ -113,3 +119,9 @@
 | 2026-11-15 / 679913a+Working tree / 31c4fcb cached snapshot | “ดำเนินการพัฒนาต่อ” ในขอบเขต ROLLBACK | Evaluation HTTP runner/19safeguards/report/docs ไม่แก้ production/sourceเพื่อนหรือเพิ่มseed | EH10/10 mixed5-dualHTTP5/realLogin-CSRF/3PID-overlap-wait/A-BROLLBACK/Safeguards79/baseline52-ACL/manifestsเดิมvalid/Authfixture0 | HTTPworkersเป็นeffectiveappบนborrowedconnection; ยังไม่sameactordualHTTP/physicalappfactory/winner-COMMIT/peer API integration/UAT ไม่Commit/Push |
 | 2026-11-15 / 679913a+Working tree / 31c4fcb verified by ls-remote | “พัฒนาหน้าพื้นที่ทำงานตามร่าง” | Workspace route/feature/account link/Browser9/Contract/docs ใช้ APIเดิม ไม่แก้Backendหรือsourceเพื่อน | Browser9/Full109/lint/TypeScript/build PASS ROLLBACK/fixtureconn0/DesktopMobile/role-stale-request guards | U03 metrics/ST-01เต็ม/peer integration/UATยังไม่ครบ ไม่เปลี่ยนLoginปลายทาง/SQL/RBAC/seed ไม่Commit/Push |
 | 2026-11-15 / 679913a+Working tree / 31c4fcb snapshotก่อนหน้า | “ดำเนินการพัฒนาต่อ” งานคู่มือ/UAT | User guide/Demo/UATplan20กรณี/README-team-backlog ไม่แก้sourceหรือrequirements | Defaultdirectapp rollbackserver8001 startup9requests/metadata-ACL-rowcountsคืนbaseline/fixtureconn0ผ่าน; UATโดยผู้ใช้Not Run | P20เริ่มIn Progress ไม่เพิ่มDone/เปอร์เซ็นต์ ไม่สร้างstaff/phasefixtureหรือLoginถาวร ไม่รับช่วงSubmission/Milestone/Supabase/Commit-Push |
+
+## บันทึกรวมงาน 2026-11-16
+
+เจ้าของอนุมัติรับ Backend Submission 7 operations จากเพื่อน `31c4fcb` ลง local `feature/team-integration` ฐาน `6040702` แบบเลือกไฟล์และผสาน main/dependencies/OpenAPI กับ 8 UOW overrides แก้ rollback fixture B01/B03 ในชุดรวม ส่วน B02 คง `auth_store`/test DB/`project_app` เดิมและพัก Supabase ไว้ก่อน ไม่เปลี่ยน branch ของเพื่อน
+
+Full Backend545/Browser109/targeted34/direct app read–advisor guard ผ่าน พร้อมคืน public values/metadata/ACL/Auth counts และ fixture connections เป็น 0 ดู [รายงาน integration](../progress/SUBMISSION_INTEGRATION_REPORT.md) สำหรับขอบเขตแต่ละผลทดสอบ Submission UI/Milestone API/UI ยังรอ source เพื่อน ส่วน live TCP Submission/concurrency/fresh install/UAT ยังไม่ยืนยัน ไม่มี Commit/Push ในรอบนี้

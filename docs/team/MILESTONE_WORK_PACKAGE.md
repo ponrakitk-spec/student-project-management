@@ -1,5 +1,9 @@
 # งานทีมM — Milestone และจุดต่อTask
 
+**รับช่วง Task ต่อ 2026-11-16:** ผู้ใช้เลือก “พัฒนา Task/ผู้รับผิดชอบตามร่างครบ workflow” แล้ว ดู [Task Contract](../api/TASKS_CONTRACT.md) และ [ผล implementation](../progress/TASK_IMPLEMENTATION_REPORT.md) มี Task/Assignee/history ของทีมตนต่อจาก Milestone ไม่เปลี่ยนกฎ V1 ส่วนอ่านของ advisor/coordinator ยังไม่อยู่ในขอบเขต
+
+**ขอบเขตยืนยัน/พัฒนา 2026-11-16:** เจ้าของเลือก Milestone สำหรับทีมตนเอง (สมาชิกอ่าน/หัวหน้าจัดการ) ผ่าน 5 operations และหน้า `/projects/milestones` ตาม [Contract](../api/MILESTONES_CONTRACT.md) / [รายงาน](../progress/PEER_WORK_CONTINUATION_REPORT.md) แล้ว ยังไม่มี Task API หรือหน้า Milestone ของ advisor/coordinator รายการก่อนยืนยันด้านล่างเป็นฐานส่งต่อเดิม ส่วนที่อยู่นอกขอบเขตใหม่ยังต้องยืนยันก่อนทำ
+
 สถานะส่งต่อ: **มีSQL/controlledoperations/DB-onlytests แต่ยังไม่มีAPI/UIหรือHTTPContractที่ยืนยัน** งานนี้ไม่อนุมัติTask/Assigneeเต็มระบบ, Dashboardmetrics, TimelineหรือContributionformulaเอง
 
 อ่าน [Data Dictionary](../database/Database_Schema_V1_Data_Dictionary.md) ตาราง11–14/ส่วน4.2/4.4, [SQL V1](../../database/schema/Database_Schema_V1_A02_A05_REVIEW_DRAFT.sql) v1_milestone_guard/v1_task_guard/v1_refresh_milestone และ [Reference](../database/SCHEMA_V1_REFERENCE.md)

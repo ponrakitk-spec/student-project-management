@@ -476,7 +476,8 @@ class ProjectAPIIntegrationTests(unittest.TestCase):
         response=self.client.options(URL+"/me",headers={**base.ORIGIN,"Access-Control-Request-Method":"PATCH","Access-Control-Request-Headers":"content-type,x-csrf-token"})
         self.assertEqual(response.status_code,200)
         self.assertEqual(response.headers["access-control-allow-origin"],"http://localhost:3000")
-        self.assertEqual(set(response.headers["access-control-allow-methods"].split(", ")),{"GET","POST","PATCH"})
+        # DELETE is approved for Milestones; Project routes still have GET/PATCH only.
+        self.assertEqual(set(response.headers["access-control-allow-methods"].split(", ")),{"GET","POST","PATCH","DELETE"})
         self.assertEqual(self.client.options(URL+"/me",headers={"Origin":"http://untrusted.example.test","Access-Control-Request-Method":"PATCH"}).status_code,400)
 
     def test_patch_failure_after_write_and_at_transaction_completion_restores_data(self):

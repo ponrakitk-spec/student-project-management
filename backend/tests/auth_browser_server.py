@@ -20,7 +20,7 @@ from psycopg.pq import TransactionStatus
 import uvicorn
 
 from backend.auth_api import get_auth_uow
-from backend.auth_store import StorageUnavailable, assert_auth_connection, open_auth_connection, transaction_on
+from backend.auth_store import StorageUnavailable, assert_auth_connection, open_auth_connection, transaction_on, runtime_target
 from backend.auth_security import hash_password
 from backend.main import create_app
 from backend.team_api import get_team_uow
@@ -35,6 +35,12 @@ from backend.topic_vote_api import get_topic_vote_uow
 from backend.topic_vote_store import topic_vote_transaction_on
 from backend.evaluation_api import get_evaluation_uow
 from backend.evaluation_store import evaluation_transaction_on
+from backend.submission_api import get_submission_uow
+from backend.submission_store import submission_transaction_on
+from backend.milestone_api import get_milestone_uow
+from backend.milestone_store import milestone_transaction_on
+from backend.task_api import get_task_uow
+from backend.task_store import task_transaction_on
 from database.tests.Auth_Regression import BASE, OWNER, TEST_DB, snapshot, switch
 from database.tools.Test_Database import connect_test_database
 
@@ -248,6 +254,8 @@ def baseline_snapshot():
 def run_fixture():
     if os.environ.get("SPMS_AUTH_BROWSER_ROLLBACK") != "1":
         raise RuntimeError("Explicit browser rollback-test mode is required")
+    if runtime_target().mode != "local_test":
+        raise StorageUnavailable()
     owner_fixtures = os.environ.get("SPMS_INVITATION_BROWSER_FIXTURES") == "1"
     conn = connect_test_database() if owner_fixtures else open_auth_connection()
     lock = RLock()
@@ -280,6 +288,9 @@ def run_fixture():
             app.dependency_overrides[get_committee_uow] = lambda: lambda: borrowed_uow(committee_transaction_on)
             app.dependency_overrides[get_topic_vote_uow] = lambda: lambda: borrowed_uow(topic_vote_transaction_on)
             app.dependency_overrides[get_evaluation_uow] = lambda: lambda: borrowed_uow(evaluation_transaction_on)
+            app.dependency_overrides[get_submission_uow] = lambda: lambda: borrowed_uow(submission_transaction_on)
+            app.dependency_overrides[get_milestone_uow] = lambda: lambda: borrowed_uow(milestone_transaction_on)
+            app.dependency_overrides[get_task_uow] = lambda: lambda: borrowed_uow(task_transaction_on)
             uvicorn.run(app, host="127.0.0.1", port=8001, log_level="warning")
     finally:
         conn.rollback()

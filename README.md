@@ -1,5 +1,15 @@
 # Student Project Management System
 
+**ชุดส่งต่อ branch รวม (2026-11-16):** ผู้ใช้อนุมัติเผยแพร่งานวันนี้บน `feature/team-integration` รวม Submission/Milestone/Task และการเตรียม Supabase ดู [สรุปชุดส่งต่อและจุดพักงาน](docs/team/INTEGRATION_RELEASE_2026-11-16.md) Supabase **ยังไม่ติดตั้งจริง** ข้อความ “ยังไม่ Commit/Push” ด้านล่างเป็น snapshot ของรอบพัฒนาแต่ละช่วง ให้ตรวจ commit/remote ปัจจุบันจาก Git
+
+**Supabase เตรียมเชื่อมต่อ (2026-11-16):** ผู้ใช้เลือกฐานข้อมูลกลางและคง Login เดิม เพิ่มโหมด `supabase_test` แบบ opt-in, Project/TLS/role guards และ SQL deployment draft จากเพื่อน ดู [คู่มือ](docs/team/SUPABASE_SETUP.md) และ [รายงาน](docs/progress/SUPABASE_PREPARATION_REPORT.md) **ยังไม่สร้าง/ติดตั้ง/ทดสอบบน Project จริงหรือย้ายข้อมูล** ค่าเริ่มต้นและชุดทดสอบเดิมยังใช้ local test DB ไม่ Commit/Push
+
+**Task/ผู้รับผิดชอบล่าสุด (2026-11-16):** เพิ่ม Task API/UI ของทีมตาม [Contract](docs/api/TASKS_CONTRACT.md) และ [รายงาน](docs/progress/TASK_IMPLEMENTATION_REPORT.md) เข้า Project → Milestone → งานย่อยและผู้รับผิดชอบ เพื่อสร้าง/มอบหมาย/ทำงานให้เสร็จและอ่านประวัติ Milestone เปลี่ยนสถานะตาม Task จริงและเปิด Evaluation เมื่อผ่านเงื่อนไขเดิม งานยังอยู่ local `feature/team-integration` ไม่ Commit/Push
+
+**พัฒนาต่อจากงานเพื่อน (2026-11-16):** เพิ่มหน้า `/projects/submissions`, `/advisor/submissions` และ Milestone API/UI สำหรับทีมที่ `/projects/milestones` ตาม [รายงานรอบนี้](docs/progress/PEER_WORK_CONTINUATION_REPORT.md) ใช้ branch `feature/team-integration` ที่ยังไม่ Commit/Push; ไม่รวม Task API หรือ Supabase runtime ข้อความสถานะก่อนหน้านี้ด้านล่างเป็นประวัติของแต่ละรอบ
+
+**รวมงานล่าสุด (2026-11-16):** branch `feature/team-integration` เชื่อม Backend Submission ของเพื่อนกับระบบเดิมแล้ว ตาม [Contract](docs/api/SUBMISSIONS_CONTRACT.md) และ [รายงาน integration](docs/progress/SUBMISSION_INTEGRATION_REPORT.md) ยังคง PostgreSQL test DB/`project_app` เดิม ส่วน Submission UI, Milestone API/UI และ Supabase runtime ยังไม่รวม ชุด integration ยังไม่ได้ Commit/Push
+
 **พักพัฒนา/ชุดส่งต่อ (2026-11-15):** อ่าน [สรุปงานที่เพิ่มจากฐาน 679913a และผลตรวจชุดส่งต่อ](docs/team/RELEASE_PREPARATION_2026-11-15.md) งานรอบนี้ใช้ branch `feature/project-continuation` และยังไม่รวม branch ของเพื่อน ตรวจ commit/remote ที่ได้รับก่อนเริ่มงาน
 
 ระบบจัดการโครงงานนักศึกษา ใช้ FastAPI + PostgreSQL และ Next.js/TypeScript

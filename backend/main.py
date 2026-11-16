@@ -22,6 +22,28 @@ from backend.invitation_api import router as invitation_router, invitation_valid
 from backend.committee_api import router as committee_router, committee_validation_error_handler, committee_storage_error_handler
 from backend.topic_vote_api import router as topic_vote_router, topic_vote_validation_error_handler, topic_vote_storage_error_handler
 from backend.evaluation_api import router as evaluation_router, evaluation_validation_error_handler, evaluation_storage_error_handler
+from backend.submission_api import (
+    SubmissionBodyLimitMiddleware, router as submission_router,
+    submission_validation_error_handler, submission_storage_error_handler,
+)
+from backend.milestone_api import router as milestone_router, milestone_validation_error_handler, milestone_storage_error_handler
+from backend.task_api import router as task_router, task_validation_error_handler, task_storage_error_handler
+
+
+def is_task_api_path(path):
+    return path.startswith("/api/v1/tasks/") or (path.startswith("/api/v1/milestones/") and path.rstrip("/").endswith("/tasks"))
+
+
+def is_milestone_api_path(path):
+    return path.rstrip("/") == "/api/v1/projects/me/milestones" or path.startswith("/api/v1/milestones/")
+
+
+def is_submission_api_path(path):
+    path = path.rstrip("/")
+    return (path == "/api/v1/projects/me/submissions"
+            or path.startswith("/api/v1/projects/me/submissions/")
+            or path.startswith("/api/v1/project-submissions/")
+            or path == "/api/v1/advisor/submissions")
 
 
 def is_evaluation_api_path(path):
@@ -53,6 +75,12 @@ def is_invitation_api_path(path):
 
 
 async def request_validation_error_handler(request, exc):
+    if is_task_api_path(request.url.path):
+        return await task_validation_error_handler(request, exc)
+    if is_milestone_api_path(request.url.path):
+        return await milestone_validation_error_handler(request, exc)
+    if is_submission_api_path(request.url.path):
+        return await submission_validation_error_handler(request, exc)
     if is_evaluation_api_path(request.url.path):
         return await evaluation_validation_error_handler(request, exc)
     if is_topic_vote_api_path(request.url.path):
@@ -69,6 +97,12 @@ async def request_validation_error_handler(request, exc):
 
 
 async def request_storage_error_handler(request, exc):
+    if is_task_api_path(request.url.path):
+        return await task_storage_error_handler(request, exc)
+    if is_milestone_api_path(request.url.path):
+        return await milestone_storage_error_handler(request, exc)
+    if is_submission_api_path(request.url.path):
+        return await submission_storage_error_handler(request, exc)
     if is_evaluation_api_path(request.url.path):
         return await evaluation_storage_error_handler(request, exc)
     if is_topic_vote_api_path(request.url.path):
@@ -92,6 +126,9 @@ def create_app(settings: AuthSettings | None = None):
     app.include_router(committee_router)
     app.include_router(topic_vote_router)
     app.include_router(evaluation_router)
+    app.include_router(submission_router)
+    app.include_router(milestone_router)
+    app.include_router(task_router)
     app.add_exception_handler(AuthError, auth_error_handler)
     app.add_exception_handler(StorageUnavailable, request_storage_error_handler)
     app.add_exception_handler(EmailConflict, conflict_error_handler)
@@ -100,13 +137,14 @@ def create_app(settings: AuthSettings | None = None):
     @app.middleware("http")
     async def auth_cache_headers(request, call_next):
         response = await call_next(request)
-        if is_evaluation_api_path(request.url.path) or is_topic_vote_api_path(request.url.path) or request.url.path.startswith(("/api/v1/auth/", "/api/v1/coordinator/")) or is_team_api_path(request.url.path) or is_project_api_path(request.url.path) or is_invitation_api_path(request.url.path):
+        if is_task_api_path(request.url.path) or is_milestone_api_path(request.url.path) or is_submission_api_path(request.url.path) or is_evaluation_api_path(request.url.path) or is_topic_vote_api_path(request.url.path) or request.url.path.startswith(("/api/v1/auth/", "/api/v1/coordinator/")) or is_team_api_path(request.url.path) or is_project_api_path(request.url.path) or is_invitation_api_path(request.url.path):
             response.headers["Cache-Control"] = "no-store"
         return response
 
+    app.add_middleware(SubmissionBodyLimitMiddleware)
     app.add_middleware(
         CORSMiddleware, allow_origins=list(app.state.auth_settings.allowed_origins),
-        allow_credentials=True, allow_methods=["GET", "POST", "PATCH"],
+        allow_credentials=True, allow_methods=["GET", "POST", "PATCH", "DELETE"],
         allow_headers=["Content-Type", "X-CSRF-Token"],
     )
 

@@ -1,4 +1,4 @@
-"""Test-database-only Auth storage with an explicit transaction per operation.
+"""Local-test or explicitly selected Supabase-test Auth storage.
 
 Runtime connections authenticate as project_app; there is no owner/admin
 fallback. Test fixtures can borrow a connection through transaction_on(), which
@@ -12,6 +12,8 @@ from pathlib import Path
 from dotenv import dotenv_values
 import psycopg
 
+from backend.db_target import database_target, InvalidDatabaseTarget
+
 TEST_DB = "student_project_management_v1_test"
 APP_ROLE = "project_app"
 
@@ -24,7 +26,23 @@ class EmailConflict(Exception):
     pass
 
 
+def runtime_target():
+    config = dotenv_values(Path(__file__).with_name(".env"))
+    values = {**config, **os.environ}
+    try:
+        return database_target(values)
+    except InvalidDatabaseTarget:
+        raise StorageUnavailable() from None
+
+
 def assert_auth_connection(conn):
+    # Preserve the local guard without requiring a password for borrowed local
+    # fixtures. A cloud profile must pass strict destination validation first.
+    config = dotenv_values(Path(__file__).with_name(".env"))
+    mode = os.environ.get("AUTH_DB_TARGET", config.get("AUTH_DB_TARGET")) or "local_test"
+    expected_database = TEST_DB
+    if mode != "local_test":
+        expected_database = runtime_target().database
     with conn.cursor() as cur:
         cur.execute("""SELECT current_database(), current_user, r.rolsuper,
             r.rolcreatedb, r.rolcreaterole, r.rolbypassrls, r.rolreplication,
@@ -33,24 +51,25 @@ def assert_auth_connection(conn):
             pg_catalog.pg_has_role(current_user,'pg_read_all_data','MEMBER'),
             pg_catalog.pg_has_role(current_user,'pg_write_all_data','MEMBER')
             FROM pg_catalog.pg_roles r WHERE r.rolname=current_user""")
-        if cur.fetchone() != (TEST_DB, APP_ROLE, False, False, False, False, False, "origin", False, False, False):
+        if cur.fetchone() != (expected_database, APP_ROLE, False, False, False, False, False, "origin", False, False, False):
             raise StorageUnavailable()
+        if mode == "supabase_test":
+            cur.execute("SELECT session_user = current_user")
+            if cur.fetchone() != (True,):
+                raise StorageUnavailable()
 
 
-def open_auth_connection():
+def open_auth_connection(*, readonly=False):
     # Do not import backend.database: its DB_NAME may be the protected main DB.
     # Existing admin DB_USER/DB_PASSWORD/DB_NAME are deliberately not reused.
-    config = dotenv_values(Path(__file__).with_name(".env"))
-    password = os.environ.get("AUTH_DB_PASSWORD", config.get("AUTH_DB_PASSWORD"))
-    if not password:
-        raise StorageUnavailable()
+    target = runtime_target()
     try:
         return psycopg.connect(
-            host=os.environ.get("AUTH_DB_HOST", config.get("AUTH_DB_HOST") or "localhost"),
-            port=int(os.environ.get("AUTH_DB_PORT", config.get("AUTH_DB_PORT") or "5432")),
-            dbname=TEST_DB, user=APP_ROLE, password=password, autocommit=False,
+            **target.connect_kwargs, autocommit=False,
             connect_timeout=8,
-            options="-c statement_timeout=15000 -c lock_timeout=3000",
+            options="-c statement_timeout=15000 -c lock_timeout=3000" + (
+                " -c default_transaction_read_only=on" if readonly else ""
+            ),
         )
     except (psycopg.Error, ValueError):
         raise StorageUnavailable() from None
@@ -80,10 +99,13 @@ def auth_transaction():
 class AuthRepository:
     def __init__(self, conn):
         self.conn = conn
+        # Both names are fixed, never supplied as SQL text by a request/config.
+        # Every UOW validates database and effective role before repositories.
+        self.schema = "spms_auth" if conn.info.dbname == "postgres" else "auth"
 
     def register(self, full_name, email, encoded_hash):
         with self.conn.cursor() as cur:
-            cur.execute("SELECT auth.register_student(%s,%s,%s)", (full_name, email, encoded_hash))
+            cur.execute(f"SELECT {self.schema}.register_student(%s,%s,%s)", (full_name, email, encoded_hash))
             user_id = cur.fetchone()[0]
         return self.user(user_id)
 
@@ -103,12 +125,12 @@ class AuthRepository:
 
     def credentials(self, email):
         with self.conn.cursor() as cur:
-            cur.execute("SELECT user_id,password_hash FROM auth.lookup_credentials(%s)", (email,))
+            cur.execute(f"SELECT user_id,password_hash FROM {self.schema}.lookup_credentials(%s)", (email,))
             return cur.fetchone()
 
     def create_session(self, user_id, digest, ttl_seconds):
         with self.conn.cursor() as cur:
-            cur.execute("""INSERT INTO auth.sessions(token_hash,user_id,expires_at)
+            cur.execute(f"""INSERT INTO {self.schema}.sessions(token_hash,user_id,expires_at)
                 VALUES (%s,%s,clock_timestamp()+(%s * interval '1 second'))""",
                         (digest, user_id, ttl_seconds))
 
@@ -116,11 +138,11 @@ class AuthRepository:
         with self.conn.cursor() as cur:
             # FK/cascade maintains credential existence. Do not directly SELECT
             # credentials here: project_app has no such table privilege.
-            cur.execute("""SELECT u.id,u.full_name,u.email,u.role
-                FROM auth.sessions s JOIN public.users u ON u.id=s.user_id
+            cur.execute(f"""SELECT u.id,u.full_name,u.email,u.role
+                FROM {self.schema}.sessions s JOIN public.users u ON u.id=s.user_id
                 WHERE s.token_hash=%s AND s.expires_at>clock_timestamp()""", (digest,))
             return self.public_user(cur.fetchone())
 
     def delete_session(self, digest):
         with self.conn.cursor() as cur:
-            cur.execute("DELETE FROM auth.sessions WHERE token_hash=%s", (digest,))
+            cur.execute(f"DELETE FROM {self.schema}.sessions WHERE token_hash=%s", (digest,))

@@ -37,6 +37,12 @@ from backend.topic_vote_api import get_topic_vote_uow
 from backend.topic_vote_store import topic_vote_transaction_on
 from backend.evaluation_api import get_evaluation_uow
 from backend.evaluation_store import evaluation_transaction_on
+from backend.submission_api import get_submission_uow
+from backend.submission_store import submission_transaction_on
+from backend.milestone_api import get_milestone_uow
+from backend.milestone_store import milestone_transaction_on
+from backend.task_api import get_task_uow
+from backend.task_store import task_transaction_on
 from backend.tests import team_project_concurrency as team_cases, topic_vote_concurrency as vote_cases
 from backend.tests.team_project_concurrency import (
     CheckFailed, fingerprint, finish_worker, require, rollback_connection, wait_for_block,
@@ -51,6 +57,9 @@ MANAGERS = {
     get_auth_uow: transaction_on, get_team_uow: team_transaction_on,
     get_project_uow: project_transaction_on, get_invitation_uow: invitation_transaction_on,
     get_committee_uow: committee_transaction_on, get_topic_vote_uow: topic_vote_transaction_on,
+    get_submission_uow: submission_transaction_on,
+    get_milestone_uow: milestone_transaction_on,
+    get_task_uow: task_transaction_on,
     get_evaluation_uow: evaluation_transaction_on,
 }
 CASES = {**{"H" + key: value for key, value in team_cases.CASES.items()},

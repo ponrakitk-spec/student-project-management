@@ -102,10 +102,18 @@ class AuthBoundaryTests(unittest.TestCase):
                 "/api/v1/coordinator/projects/{project_id}/topic-votes",
                 "/api/v1/committee/projects/{project_id}/evaluations", "/api/v1/projects/me/evaluations",
                 "/api/v1/advisor/projects/{project_id}/evaluations", "/api/v1/coordinator/projects/{project_id}/evaluations",
+                "/api/v1/projects/me/submissions", "/api/v1/projects/me/submissions/eligibility",
+                "/api/v1/advisor/submissions", "/api/v1/project-submissions/{submission_id}",
+                "/api/v1/project-submissions/{submission_id}/file", "/api/v1/project-submissions/{submission_id}/review",
+                "/api/v1/projects/me/milestones", "/api/v1/milestones/{milestone_id}",
+                "/api/v1/milestones/{milestone_id}/tasks", "/api/v1/tasks/{task_id}", "/api/v1/tasks/{task_id}/status",
+                "/api/v1/tasks/{task_id}/assignees", "/api/v1/tasks/{task_id}/assignees/{team_member_id}",
+                "/api/v1/tasks/{task_id}/assignment-history",
             })
             self.assertEqual(set(app.openapi()["paths"]["/api/v1/projects/me"]), {"get", "patch"})
             self.assertEqual(set(app.openapi()["paths"]["/api/v1/teams/me"]), {"get", "patch"})
             self.assertEqual(set(app.openapi()["paths"]["/api/v1/teams/me/leader"]), {"post"})
+            self.assertEqual(set(app.openapi()["paths"]["/api/v1/projects/me/submissions"]), {"get", "post"})
             for path in ("/api/v1/teams/me/leave", "/api/v1/teams/me/members/{team_member_id}/remove"):
                 self.assertEqual(set(app.openapi()["paths"][path]), {"post"})
             self.assertEqual(set(app.openapi()["paths"]["/api/v1/coordinator/projects/{project_id}/committee"]), {"get", "post"})

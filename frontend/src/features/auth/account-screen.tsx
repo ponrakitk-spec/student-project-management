@@ -42,6 +42,7 @@ export function AccountScreen() {
     {user.role === "student" && <Link className={styles.secondaryButton} href="/teams">ทีมของฉัน →</Link>}
     {user.role === "advisor" && <Link className={styles.secondaryButton} href="/advisor/invitations">คำเชิญของฉัน →</Link>}
     {user.role === "advisor" && <Link className={styles.secondaryButton} href="/advisor/projects">โครงงานที่ปรึกษา →</Link>}
+    {user.role === "advisor" && <Link className={styles.secondaryButton} href="/advisor/submissions">ตรวจโครงงานที่ปรึกษา →</Link>}
     {user.role === "advisor" && <Link className={styles.secondaryButton} href="/committee/projects">งานกรรมการ →</Link>}
     {user.role === "coordinator" && <Link className={styles.secondaryButton} href="/coordinator/projects">จัดการกรรมการโครงงาน →</Link>}
     {error && <div className={styles.errorBox} role="alert"><p>{error}</p><Link href="/login">เข้าสู่ระบบใหม่</Link></div>}

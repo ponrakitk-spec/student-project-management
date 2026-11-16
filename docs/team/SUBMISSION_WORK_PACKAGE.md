@@ -1,5 +1,7 @@
 # งานทีมS — ส่งโครงงาน / ไฟล์ / ตรวจและขอแก้ไข
 
+**พัฒนาต่อ 2026-11-16:** เจ้าของรับ Backend ของเพื่อนและสั่งทำส่วนที่ยังขาดต่อแล้ว ปัจจุบันมี Submission API/UI ตาม [Contract](../api/SUBMISSIONS_CONTRACT.md) และ [รายงานล่าสุด](../progress/PEER_WORK_CONTINUATION_REPORT.md) ส่วนสถานะ/งานที่ต้องยืนยันด้านล่างเก็บไว้เป็นเอกสารส่งต่อเดิม ไม่ใช่สถานะ implementation ปัจจุบัน
+
 สถานะส่งต่อ: **มีDBSchema/guards/DB-onlyregression แต่ยังไม่มีAPI/UIหรือHTTPContractที่เจ้าของยืนยัน** เอกสารนี้เป็นขอบเขตอ้างอิง/รายการงาน ไม่ใช่การอนุมัติendpoint/library/หน้าจอใหม่
 
 อ่าน [Data Dictionary](../database/Database_Schema_V1_Data_Dictionary.md) ตาราง6–7/ส่วน4.2–4.5, [Schema Reference](../database/SCHEMA_V1_REFERENCE.md), [SQL V1](../../database/schema/Database_Schema_V1_A02_A05_REVIEW_DRAFT.sql), [RBAC](../../database/schema/Database_Schema_V1_A02_A05_RBAC_REVIEW_TEMPLATE.sql) ก่อนเขียนContract

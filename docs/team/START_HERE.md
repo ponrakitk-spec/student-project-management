@@ -1,5 +1,11 @@
 # จุดเริ่มต้นสำหรับทีม — Student Project Management System
 
+**รอบ Task 2026-11-16:** เจ้าของยืนยัน Task/Assignee/History สำหรับทีมแล้ว มี [Contract](../api/TASKS_CONTRACT.md), [รายงานล่าสุด](../progress/TASK_IMPLEMENTATION_REPORT.md) และ [คู่มือขั้นตอน](../user/USER_GUIDE.md) ต่อจาก Milestone MVP ข้อความ “ยังไม่มี Task API” ในรายงานก่อนหน้าเป็นสถานะก่อนรอบนี้ ยังคง test DB/project_app/ROLLBACK และไม่เปิด Supabase หรือ Task หน้าบทบาทอื่น
+
+**สถานะต่อจาก integration 2026-11-16:** เจ้าของอนุมัติรับช่วงงานที่เพื่อนยังไม่ได้ทำแล้ว มี Submission UI และ Milestone API/UI สำหรับทีมตาม [รายงานใหม่](../progress/PEER_WORK_CONTINUATION_REPORT.md) / [Milestone Contract](../api/MILESTONES_CONTRACT.md) ข้อความ integration ด้านล่างบันทึกสถานะก่อนรอบนี้ Task API/Assignees และหน้าของ advisor/coordinator สำหรับ Milestone ยังนอก scope
+
+**รวมงาน 2026-11-16:** local `feature/team-integration` รับ Backend Submission ของเพื่อนแล้ว ใช้ [Contract](../api/SUBMISSIONS_CONTRACT.md) และ [รายงาน integration](../progress/SUBMISSION_INTEGRATION_REPORT.md) เป็นสถานะล่าสุด; รักษาระบบของเราจาก `6040702` และที่มาของเพื่อน `31c4fcb` ยังไม่ Commit/Push ชุดรวม ไม่รวม Supabase runtime, Submission UI หรือ Milestone API/UI
+
 **ชุดส่งต่อ 2026-11-15:** ดู [สรุปส่วนเพิ่ม/ผลทดสอบ/ข้อจำกัดและสถานะก่อนเผยแพร่](RELEASE_PREPARATION_2026-11-15.md) สำหรับ `feature/project-continuation`; ตรวจ commit/remote ที่ได้รับก่อนเริ่มงาน รายงาน handoff เดิมเป็นหลักฐานของฐาน `679913a`
 
 **คู่มือ/UAT 2026-11-15:** มี [คู่มือผู้ใช้](../user/USER_GUIDE.md), [Demo](../user/DEMO_SCRIPT.md) และ [แผนManual UAT20กรณี/เปิด8001แบบROLLBACK](../uat/MANUAL_UAT.md) แล้ว Startup/API/teardown probe9คำขอผ่านและคืนbaseline แต่ **Manual UATโดยทีมยังNot Run** เอกสารอิงlocalworkingtreeที่ยังไม่Commit/Push ต้องได้sourceชุดเดียวกันก่อนทำตาม ไม่ถือว่าclonecommitเก่าจะมีWorkspace/Evaluationครบ

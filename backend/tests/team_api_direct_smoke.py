@@ -5,9 +5,11 @@ owner role switch in the request connection; metadata snapshots are separate.
 """
 
 import json
+from io import BytesIO
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+from pypdf import PdfWriter
 
 from backend.auth_api import CSRF_COOKIE, CSRF_HEADER, get_auth_uow
 from backend.auth_store import TEST_DB, assert_auth_connection, open_auth_connection, transaction_on
@@ -18,6 +20,12 @@ from backend.project_api import get_project_uow
 from backend.project_store import project_transaction_on
 from backend.invitation_api import get_invitation_uow
 from backend.invitation_store import invitation_transaction_on
+from backend.submission_api import get_submission_uow
+from backend.submission_store import submission_transaction_on
+from backend.milestone_api import get_milestone_uow
+from backend.milestone_store import milestone_transaction_on
+from backend.task_api import get_task_uow
+from backend.task_store import task_transaction_on
 from database.tests.Team_Create_Installed_Regression import baseline
 
 
@@ -48,6 +56,9 @@ def main():
             app.dependency_overrides[get_team_uow] = lambda: lambda: team_transaction_on(conn)
             app.dependency_overrides[get_project_uow] = lambda: lambda: project_transaction_on(conn)
             app.dependency_overrides[get_invitation_uow] = lambda: lambda: invitation_transaction_on(conn)
+            app.dependency_overrides[get_submission_uow] = lambda: lambda: submission_transaction_on(conn)
+            app.dependency_overrides[get_milestone_uow] = lambda: lambda: milestone_transaction_on(conn)
+            app.dependency_overrides[get_task_uow] = lambda: lambda: task_transaction_on(conn)
             with TestClient(app,base_url="http://localhost:8000") as client:
                 origin = {"Origin":"http://localhost:3000"}
                 response = client.post("/api/v1/teams",headers=origin,json={"name":"Direct fixture"})
@@ -139,6 +150,51 @@ def main():
                 check(response.status_code == 409 and response.json()["error"]["code"] == "PROJECT_ALREADY_EXISTS")
                 check(conn.execute("SELECT count(*) FROM public.projects").fetchone()[0] == before[1]["public.projects"]+1)
                 emit("PROJECT_HTTP_DUPLICATE",status=409)
+                today = conn.execute("SELECT (NOW() AT TIME ZONE 'Asia/Bangkok')::date").fetchone()[0].isoformat()
+                response = client.post("/api/v1/projects/me/milestones",headers=headers,json={"name":"Direct milestone","due_date":today})
+                check(response.status_code == 201)
+                milestone = response.json()["data"]
+                check(milestone["created_by"] == actor and milestone["status"] == "not_started")
+                response = client.post(f"/api/v1/milestones/{milestone['id']}/tasks",headers=headers,json={"name":"Direct task"})
+                check(response.status_code == 201)
+                task = response.json()["data"]
+                task_url = "/api/v1/tasks/" + task["id"]
+                member = team["members"][0]["id"]
+                response = client.post(task_url+"/assignees",headers=headers,json={"team_member_id":member})
+                check(response.status_code == 201)
+                check(client.post(task_url+"/status",headers=headers,json={"status":"completed"}).status_code == 200)
+                check(client.get("/api/v1/milestones/"+milestone["id"]).json()["data"]["status"] == "completed")
+                check(client.post(task_url+"/status",headers=headers,json={"status":"in_progress"}).status_code == 200)
+                check(client.delete(task_url+"/assignees/"+member,headers=headers).status_code == 409)
+                check(client.post(task_url+"/status",headers=headers,json={"status":"not_started"}).status_code == 200)
+                check(client.delete(task_url+"/assignees/"+member,headers=headers).status_code == 204)
+                check(len(client.get(task_url+"/assignment-history").json()["data"]) == 1)
+                check(client.delete(task_url,headers=headers).status_code == 204)
+                assert_auth_connection(conn)
+                emit("TASK_HTTP_DIRECT_APP_WORKFLOW",created=201,assigned=201,completed=200,last_active_assignee=409,history=True,deleted=204)
+                response = client.patch("/api/v1/milestones/"+milestone["id"],headers=headers,json={"description":"Direct update"})
+                check(response.status_code == 200 and response.json()["data"]["description"] == "Direct update")
+                response = client.delete("/api/v1/milestones/"+milestone["id"],headers=headers)
+                check(response.status_code == 204)
+                assert_auth_connection(conn)
+                emit("MILESTONE_HTTP_DIRECT_APP_CREATE_PATCH_DELETE",created=201,updated=200,deleted=204,no_advisor_gate=True)
+                response = client.get("/api/v1/projects/me/submissions")
+                check(response.status_code == 200 and response.json() == {"data": []})
+                response = client.get("/api/v1/projects/me/submissions/eligibility")
+                check(response.status_code == 200 and response.json() == {"data": {"can_submit": False}})
+                output = BytesIO()
+                writer = PdfWriter()
+                writer.add_blank_page(width=612, height=792)
+                writer.write(output)
+                response = client.post("/api/v1/projects/me/submissions",headers=headers,
+                    files={"file": ("direct-fixture.pdf", output.getvalue(), "application/pdf")})
+                check(response.status_code == 409 and response.json()["error"]["code"] == "ACCEPTED_ADVISOR_REQUIRED")
+                check(conn.execute("SELECT count(*) FROM public.project_submissions").fetchone()[0]
+                      == before[1]["public.project_submissions"])
+                check(conn.execute("SELECT count(*) FROM public.project_submission_files").fetchone()[0]
+                      == before[1]["public.project_submission_files"])
+                assert_auth_connection(conn)
+                emit("SUBMISSION_HTTP_DIRECT_APP_READ_AND_ADVISOR_GUARD",history_status=200,eligibility=False,upload_status=409)
                 response = client.get("/api/v1/projects/me/advisor-candidates")
                 check(response.status_code == 200 and all(set(row)=={"id","full_name"} for row in response.json()["data"]))
                 emit("INVITATION_HTTP_DIRECT_APP_CANDIDATES",status=200)

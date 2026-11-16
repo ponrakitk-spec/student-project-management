@@ -48,6 +48,8 @@ export function ProjectScreen() {
           }} />
         : <button type="button" className={styles.secondaryButton} onClick={() => { setNotice(null); setEditing({ owner: actorId, projectId: data.id }); }}>แก้ไขโครงงาน</button>)}
       <Link className={styles.invitationLink} href="/projects/advisor-invitations">คำเชิญอาจารย์ที่ปรึกษา →</Link>
+      <Link className={styles.invitationLink} href="/projects/submissions">ส่งโครงงานและประวัติ →</Link>
+      <Link className={styles.invitationLink} href="/projects/milestones">แผนงานโครงงาน →</Link>
       <Link className={styles.invitationLink} href="/projects/committee">รายชื่อกรรมการและผลหัวข้อ →</Link>
       <Link className={styles.invitationLink} href="/projects/evaluations">ผลประเมินโครงงาน →</Link>
     </>);
