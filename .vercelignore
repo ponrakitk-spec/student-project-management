@@ -1,0 +1,12 @@
+# Private files and generated dependencies must never be uploaded by local CLI.
+.env*
+**/.env*
+.venv/
+**/.venv/
+**/node_modules/
+**/.next/
+**/__pycache__/
+**/test-results/
+**/playwright-report/
+**/*.dump
+**/*.backup

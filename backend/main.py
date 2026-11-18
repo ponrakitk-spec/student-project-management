@@ -118,7 +118,7 @@ async def request_storage_error_handler(request, exc):
 
 def create_app(settings: AuthSettings | None = None):
     app = FastAPI(title="Student Project Management API", version="0.1.0")
-    app.state.auth_settings = settings or AuthSettings()
+    app.state.auth_settings = settings if settings is not None else AuthSettings.from_environment()
     app.include_router(router)
     app.include_router(team_router)
     app.include_router(project_router)

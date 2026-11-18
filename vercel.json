@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "fastapi",
+  "functions": {
+    "backend/main.py": {
+      "excludeFiles": "{frontend/**,database/**,docs/**,backend/tests/**,**/.venv/**,**/node_modules/**,**/.next/**,**/.env*,**/__pycache__/**,**/test-results/**,**/playwright-report/**}"
+    }
+  }
+}

@@ -26,3 +26,6 @@ coverage/
 # Operating-system files.
 .DS_Store
 Thumbs.db
+
+# Local Vercel linkage/build metadata.
+.vercel/

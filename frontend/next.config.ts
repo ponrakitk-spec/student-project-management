@@ -1,7 +1,5 @@
-import type { NextConfig } from "next";
+import { deploymentConfig } from "./config/deployment.mjs";
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
+const nextConfig = deploymentConfig();
 
 export default nextConfig;

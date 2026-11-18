@@ -3,6 +3,7 @@
 from types import SimpleNamespace
 import unittest
 from unittest.mock import MagicMock, patch
+import psycopg
 
 from backend.db_target import database_target, InvalidDatabaseTarget
 from backend.auth_store import AuthRepository, StorageUnavailable, assert_auth_connection, open_auth_connection
@@ -84,8 +85,61 @@ class DatabaseTargetTests(unittest.TestCase):
 
     def test_readonly_opener_sets_server_side_readonly_before_queries(self):
         with patch.dict("os.environ", cloud(), clear=True), patch("backend.auth_store.dotenv_values", return_value={}), patch("backend.auth_store.psycopg.connect") as connect:
-            open_auth_connection(readonly=True)
+            conn = open_auth_connection(readonly=True)
             self.assertIn("default_transaction_read_only=on", connect.call_args.kwargs["options"])
+            self.assertIs(conn.read_only, True)
+            conn.execute.assert_not_called()
+
+    def test_normal_runtime_does_not_override_server_transaction_access_mode(self):
+        conn = SimpleNamespace(read_only=None)
+        with patch.dict("os.environ", cloud(), clear=True), patch("backend.auth_store.dotenv_values", return_value={}), patch("backend.auth_store.psycopg.connect", return_value=conn):
+            self.assertIs(open_auth_connection(), conn)
+            self.assertIsNone(conn.read_only)
+
+    def test_readonly_initialization_failure_closes_connection_without_secret_error(self):
+        class Connection:
+            closed = False
+            @property
+            def read_only(self): return None
+            @read_only.setter
+            def read_only(self, value): raise psycopg.OperationalError("PrivateConnectionFixture")
+            def close(self): self.closed = True
+        conn = Connection()
+        with patch.dict("os.environ", cloud(), clear=True), patch("backend.auth_store.dotenv_values", return_value={}), patch("backend.auth_store.psycopg.connect", return_value=conn):
+            with self.assertRaises(StorageUnavailable) as caught:
+                open_auth_connection(readonly=True)
+            self.assertTrue(conn.closed)
+            self.assertNotIn("PrivateConnectionFixture", str(caught.exception))
+
+    def test_transaction_limits_are_applied_only_after_cloud_identity_validation(self):
+        good = ("postgres", "project_app", False, False, False, False, False, "origin", False, False, False)
+        with patch.dict("os.environ", cloud(), clear=True), patch("backend.auth_store.dotenv_values", return_value={}):
+            conn = MagicMock()
+            cursor = conn.cursor.return_value.__enter__.return_value
+            cursor.fetchone.side_effect = [good, (True,)]
+            assert_auth_connection(conn)
+            queries = [call.args[0] for call in cursor.execute.call_args_list]
+            self.assertIn("current_database()", queries[0])
+            self.assertEqual(queries[1], "SELECT session_user = current_user")
+            self.assertEqual(queries[2:], ["SET LOCAL statement_timeout = '15s'", "SET LOCAL lock_timeout = '3s'"])
+
+    def test_local_guard_preserves_explicit_fixture_transaction_settings(self):
+        good = ("student_project_management_v1_test", "project_app", False, False, False, False, False, "origin", False, False, False)
+        with patch.dict("os.environ", {}, clear=True), patch("backend.auth_store.dotenv_values", return_value={}):
+            conn = MagicMock()
+            cursor = conn.cursor.return_value.__enter__.return_value
+            cursor.fetchone.return_value = good
+            assert_auth_connection(conn)
+            self.assertEqual(cursor.execute.call_count, 1)
+
+    def test_wrong_identity_does_not_change_transaction_settings(self):
+        with patch.dict("os.environ", {}, clear=True), patch("backend.auth_store.dotenv_values", return_value={}):
+            conn = MagicMock()
+            cursor = conn.cursor.return_value.__enter__.return_value
+            cursor.fetchone.return_value = ("other_database", "project_app", False, False, False, False, False, "origin", False, False, False)
+            with self.assertRaises(StorageUnavailable):
+                assert_auth_connection(conn)
+            self.assertEqual(cursor.execute.call_count, 1)
 
     def test_local_preview_refuses_cloud_mode_before_opening_connection(self):
         from backend.tests import auth_browser_server as preview

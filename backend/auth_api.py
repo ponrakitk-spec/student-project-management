@@ -1,7 +1,10 @@
-"""Session identity, register, login and logout for the localhost workflow."""
+"""Session identity for local HTTP or an explicitly selected HTTPS web origin."""
 
 from dataclasses import dataclass
+import os
+import re
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -25,7 +28,30 @@ ASCII_SPACE = " \t\n\r\f\v"
 class AuthSettings:
     session_ttl_seconds: int = 8 * 60 * 60
     allowed_origins: tuple[str, ...] = ("http://localhost:3000", "http://localhost:8000")
-    cookie_secure: bool = False  # Approved HTTP localhost environment only.
+    cookie_secure: bool = False  # Local HTTP default; HTTPS profile forces True.
+
+    @classmethod
+    def from_environment(cls, values=None):
+        values = os.environ if values is None else values
+        origin = values.get("AUTH_WEB_ORIGIN") or ""
+        if not origin:
+            if values.get("VERCEL") == "1":
+                raise ValueError("AUTH_WEB_ORIGIN must identify the HTTPS frontend")
+            return cls()
+        # One canonical web origin: no wildcard previews, client-supplied Host
+        # inference, credentials, API paths, query strings or insecure fallback.
+        try:
+            url = urlsplit(origin)
+            if (not origin.isascii() or any(c.isspace() for c in origin)
+                or url.scheme != "https" or url.username is not None or url.password is not None
+                or url.path not in ("", "/") or url.query or url.fragment
+                or url.port not in (None, 443) or not url.hostname
+                or not re.fullmatch(r"(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}", url.hostname)):
+                raise ValueError()
+            canonical = "https://" + url.hostname
+        except (TypeError, ValueError):
+            raise ValueError("AUTH_WEB_ORIGIN must identify one HTTPS frontend origin") from None
+        return cls(allowed_origins=(canonical,), cookie_secure=True)
 
 
 class AuthError(Exception):

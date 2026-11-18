@@ -1,5 +1,13 @@
 # Student Project Management System
 
+**ขอบเขตเผยแพร่ที่อนุมัติ (2026-11-18):** ผู้ใช้อนุมัติ Commit/Push ชุดตั้งค่า Vercel/Supabase/security patch/tests/reports ไป `feature/team-integration` ไม่เปลี่ยน main/branchเพื่อน ไม่รวม `.env` จริงหรือข้อมูล DB ดู [คู่มือและผลตรวจ](docs/deployment/VERCEL_SUPABASE_SETUP.md) ข้อความ “ยังไม่ Commit/Push” ใน snapshot ทดสอบด้านล่างเป็นสถานะก่อนอนุมัติ ตรวจ hash/การส่งสำเร็จจาก Git และผลในแชท
+
+**Supabase Auth API ผ่านจริง (2026-11-18):** สมัคร/Login/Me/CSRF/relogin/Logoutและsession8hผ่าน21/21ด้วยHTTP/ASGI+cloudPGจริง พร้อมROLLBACKคืนbaselineและไม่พบบัญชีจำลองค้าง ตาม[รายงาน](docs/database/SUPABASE_AUTH_SMOKE_REPORT.md) ยังไม่ใช่Browser/proxy/Vercelหรือทุกbusinessworkflow ไม่มีseedถาวร/Schema-RBAC changesและยังไม่Commit/Push
+
+**Supabase เชื่อมต่ออ่านอย่างเดียวผ่านจริง (2026-11-18):** หลังผู้ใช้ติดตั้งbaseline/ตั้งrestrictedpasswordและprivateconfigแล้ว ตรวจTLS/physical `project_app`/PostgreSQL17.12/Preliminarystructure-ACLผ่าน พร้อมtransaction settings10/10ตาม[รายงาน](docs/database/SUPABASE_CONNECTION_REPORT.md) แก้การตั้งREADONLY/timeoutผ่านSessionpoolerตามอนุมัติ ยังไม่ทดสอบcloudbusinesswritesหรือDeploy ไม่แก้Schema/RBACและไม่Commit/Push
+
+**เตรียม Vercel/Supabase (2026-11-18):** ยืนยัน VercelสองProjects และ Supabase `czylcqdmtzztabkcqewn` แล้ว เตรียม HTTPS Origin/Secure cookies, same-origin API proxy, Python manifest และแพตช์ Next.js16.4.6ตามอนุมัติ ดู [ขั้นตอน/ผลตรวจ/ข้อจำกัด](docs/deployment/VERCEL_SUPABASE_SETUP.md) ยังรอผู้ใช้รัน SQL Preflight ก่อนติดตั้ง cloud ที่อนุมัติ ไม่ Deploy หรือ Commit/Push จากการเตรียมนี้
+
 **ชุดส่งต่อ branch รวม (2026-11-16):** ผู้ใช้อนุมัติเผยแพร่งานวันนี้บน `feature/team-integration` รวม Submission/Milestone/Task และการเตรียม Supabase ดู [สรุปชุดส่งต่อและจุดพักงาน](docs/team/INTEGRATION_RELEASE_2026-11-16.md) Supabase **ยังไม่ติดตั้งจริง** ข้อความ “ยังไม่ Commit/Push” ด้านล่างเป็น snapshot ของรอบพัฒนาแต่ละช่วง ให้ตรวจ commit/remote ปัจจุบันจาก Git
 
 **Supabase เตรียมเชื่อมต่อ (2026-11-16):** ผู้ใช้เลือกฐานข้อมูลกลางและคง Login เดิม เพิ่มโหมด `supabase_test` แบบ opt-in, Project/TLS/role guards และ SQL deployment draft จากเพื่อน ดู [คู่มือ](docs/team/SUPABASE_SETUP.md) และ [รายงาน](docs/progress/SUPABASE_PREPARATION_REPORT.md) **ยังไม่สร้าง/ติดตั้ง/ทดสอบบน Project จริงหรือย้ายข้อมูล** ค่าเริ่มต้นและชุดทดสอบเดิมยังใช้ local test DB ไม่ Commit/Push

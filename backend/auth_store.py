@@ -57,21 +57,37 @@ def assert_auth_connection(conn):
             cur.execute("SELECT session_user = current_user")
             if cur.fetchone() != (True,):
                 raise StorageUnavailable()
+            # Poolers may ignore libpq startup options. Apply the same reviewed
+            # limits after cloud identity validation. Local fixture transactions
+            # retain their own explicit timeout settings for concurrency tests.
+            cur.execute("SET LOCAL statement_timeout = '15s'")
+            cur.execute("SET LOCAL lock_timeout = '3s'")
 
 
 def open_auth_connection(*, readonly=False):
     # Do not import backend.database: its DB_NAME may be the protected main DB.
     # Existing admin DB_USER/DB_PASSWORD/DB_NAME are deliberately not reused.
     target = runtime_target()
+    conn = None
     try:
-        return psycopg.connect(
+        conn = psycopg.connect(
             **target.connect_kwargs, autocommit=False,
             connect_timeout=8,
             options="-c statement_timeout=15000 -c lock_timeout=3000" + (
                 " -c default_transaction_read_only=on" if readonly else ""
             ),
         )
+        if readonly:
+            # Psycopg emits BEGIN READ ONLY for each transaction. Do not rely
+            # solely on startup options surviving the Supabase Session pooler.
+            conn.read_only = True
+        return conn
     except (psycopg.Error, ValueError):
+        if conn is not None:
+            try:
+                conn.close()
+            except psycopg.Error:
+                pass
         raise StorageUnavailable() from None
 
 

@@ -1,5 +1,7 @@
 # Supabase สำหรับฐานข้อมูลกลางของทีม
 
+**อัปเดต 2026-11-18:** ผู้ใช้ติดตั้ง Project `czylcqdmtzztabkcqewn` ตามอนุมัติแล้ว และ Backend preliminary read-only ผ่านจริงด้วย physical `project_app`/TLS/PostgreSQL17.12 หลังแก้READONLY/transaction-localtimeoutsผ่านpooler ดู[รายงานปัจจุบัน](../database/SUPABASE_CONNECTION_REPORT.md) ข้อความขั้นเตรียมด้านล่างเป็นคู่มือติดตั้งใหม่ ไม่ใช่คำสั่งให้รันbootstrapซ้ำ ยังไม่ทดสอบcloudCRUD/HTTPS/Vercel
+
 ขอบเขตยืนยัน 2026-11-16: Next.js → FastAPI → Supabase PostgreSQL, **คงระบบ Login เดิม** รวมทั้ง session 8 ชั่วโมง/CSRF/บทบาท V1; เก็บไฟล์ใน `project_submission_files.file_data` ตาม V1 เดิม ไม่เพิ่ม Storage/Auth ของ Supabase
 
 สถานะ: **เตรียมโค้ดและ SQL draft เท่านั้น ยังไม่มี Project ปลายทางที่ตรวจยืนยัน และยังไม่เชื่อม Supabase จริง** การติดตั้งจริง/การทดสอบเขียน/การนำเข้าข้อมูลต้องแยกขอบเขตให้ชัด ไม่ถือว่าเปลี่ยน config แล้วข้อมูลหรือบัญชีจากเครื่องจะตามไปเอง
